@@ -33,4 +33,5 @@ DEFAULT_SETTINGS = {
     },
     "ui_scale": 1.0,
     "default_app_volume": 1.0,
+    "transparency_enabled": True,
 }

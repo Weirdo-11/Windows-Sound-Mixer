@@ -8,6 +8,7 @@ DWMWA_WINDOW_CORNER_PREFERENCE = 33
 DWMWA_SYSTEMBACKDROP_TYPE = 38
 
 DWMWCP_ROUND = 2
+DWMSBT_NONE = 1
 DWMSBT_TRANSIENTWINDOW = 3
 
 DEFAULT_ACCENT_COLOR = "#3a96dd"
@@ -34,18 +35,19 @@ def get_accent_color() -> str:
         return DEFAULT_ACCENT_COLOR
 
 
-def apply_acrylic_effect(window: QWidget) -> None:
+def apply_acrylic_effect(window: QWidget, enabled: bool = True) -> None:
     if sys.platform != "win32":
         return
 
     try:
         dwmapi = ctypes.windll.dwmapi
         hwnd = int(window.winId())
+        backdrop = DWMSBT_TRANSIENTWINDOW if enabled else DWMSBT_NONE
 
         for attribute, value in (
             (DWMWA_USE_IMMERSIVE_DARK_MODE, 1),
             (DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_ROUND),
-            (DWMWA_SYSTEMBACKDROP_TYPE, DWMSBT_TRANSIENTWINDOW),
+            (DWMWA_SYSTEMBACKDROP_TYPE, backdrop),
         ):
             c_value = ctypes.c_int(value)
             dwmapi.DwmSetWindowAttribute(hwnd, attribute, ctypes.byref(c_value), ctypes.sizeof(c_value))

@@ -19,11 +19,12 @@ MIN_OVERLAY_HEIGHT = 150
 RESIZE_HANDLE_WIDTH_PX = 6
 
 
-def background_style(scale: float, accent_color: str) -> str:
+def background_style(scale: float, accent_color: str, transparent: bool = True) -> str:
     font_px = round(BASE_FONT_PX * scale)
+    background_color = "rgba(32, 32, 32, 140)" if transparent else "rgb(32, 32, 32)"
     return f"""
 #background {{
-    background-color: rgba(32, 32, 32, 140);
+    background-color: {background_color};
     border-radius: 8px;
     font-size: {font_px}px;
 }}
@@ -121,7 +122,7 @@ class OverlayWindow(QWidget):
         self._build_ui()
         self._restore_geometry()
         self.apply_scale()
-        apply_acrylic_effect(self)
+        apply_acrylic_effect(self, self._settings.get_transparency_enabled())
 
         self._geometry_save_timer = QTimer(self)
         self._geometry_save_timer.setSingleShot(True)
@@ -168,6 +169,9 @@ class OverlayWindow(QWidget):
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
+        # DWM may ignore the backdrop attribute set before the window is
+        # first mapped, so re-apply it on every show.
+        apply_acrylic_effect(self, self._settings.get_transparency_enabled())
         self.visibility_changed.emit(True)
 
     def hideEvent(self, event) -> None:
@@ -244,7 +248,9 @@ class OverlayWindow(QWidget):
 
     def apply_scale(self) -> None:
         scale = self._settings.get_ui_scale()
-        self._background.setStyleSheet(background_style(scale, self._accent_color))
+        transparent = self._settings.get_transparency_enabled()
+        self._background.setStyleSheet(background_style(scale, self._accent_color, transparent))
+        apply_acrylic_effect(self, transparent)
 
         icon_px = round(BASE_ICON_PX * scale)
         self._title_icon_label.setPixmap(load_icon("volume").pixmap(icon_px, icon_px))

@@ -334,6 +334,12 @@ class SettingsWindow(QDialog):
         self._autostart_checkbox.setChecked(self._settings.get_autostart_enabled())
         layout.addWidget(self._field("Start with Windows", self._autostart_checkbox, tab))
 
+        self._transparency_checkbox = QCheckBox(tab)
+        self._transparency_checkbox.setObjectName("transparencyToggle")
+        self._transparency_checkbox.setStyleSheet(toggle_switch_style("transparencyToggle"))
+        self._transparency_checkbox.setChecked(self._settings.get_transparency_enabled())
+        layout.addWidget(self._field("Transparent overlay background", self._transparency_checkbox, tab))
+
         self._tooltip_delay_spinbox = QSpinBox(tab)
         self._tooltip_delay_spinbox.setRange(0, 10000)
         self._tooltip_delay_spinbox.setSingleStep(100)
@@ -438,6 +444,7 @@ class SettingsWindow(QDialog):
 
         autostart_enabled = self._autostart_checkbox.isChecked()
         self._settings.set_autostart_enabled(autostart_enabled)
+        self._settings.set_transparency_enabled(self._transparency_checkbox.isChecked())
         self._settings.set_tooltip_delay_ms(self._tooltip_delay_spinbox.value())
         self._settings.set_arrow_step(self._arrow_step_spinbox.value() / 100)
         self._settings.set_scroll_step(self._scroll_step_spinbox.value() / 100)
@@ -457,6 +464,9 @@ class SettingsWindow(QDialog):
 
         if self._hotkeys is not None:
             self._hotkeys.reload()
+
+        if self._overlay is not None:
+            self._overlay.apply_scale()
 
         super().accept()
 

@@ -51,3 +51,16 @@ def test_new_entry_widgets_inherit_current_scale(qapp, fake_backend, settings):
 
     new_widget = overlay._entry_widgets[-1]
     assert new_widget._mute_button.iconSize().width() == round(ENTRY_BASE_ICON_PX * 1.5)
+
+
+def test_apply_scale_uses_opaque_background_when_transparency_disabled(qapp, fake_backend, settings):
+    overlay = make_overlay(qapp, fake_backend, settings)
+
+    assert "rgba(32, 32, 32, 140)" in overlay._background.styleSheet()
+
+    settings.set_transparency_enabled(False)
+    overlay.apply_scale()
+
+    style = overlay._background.styleSheet()
+    assert "rgba(32, 32, 32, 140)" not in style
+    assert "rgb(32, 32, 32)" in style

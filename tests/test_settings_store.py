@@ -157,3 +157,16 @@ def test_app_volume_falls_back_to_default_app_volume(tmp_path):
     store.set_default_app_volume(0.4)
 
     assert store.get_app_volume("newapp.exe") == 0.4
+
+
+def test_transparency_enabled_defaults_to_true_and_persists(tmp_path):
+    store = SettingsStore(tmp_path / "settings.json")
+    store.load()
+
+    assert store.get_transparency_enabled() is True
+
+    store.set_transparency_enabled(False)
+
+    reloaded = SettingsStore(tmp_path / "settings.json")
+    reloaded.load()
+    assert reloaded.get_transparency_enabled() is False

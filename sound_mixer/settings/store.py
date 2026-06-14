@@ -152,6 +152,13 @@ class SettingsStore:
         self.data["default_app_volume"] = clamp_volume(level)
         self.save()
 
+    def get_transparency_enabled(self) -> bool:
+        return self.data["transparency_enabled"]
+
+    def set_transparency_enabled(self, enabled: bool) -> None:
+        self.data["transparency_enabled"] = bool(enabled)
+        self.save()
+
 
 def _merge_defaults(data: dict, defaults: dict) -> dict:
     result = copy.deepcopy(defaults)

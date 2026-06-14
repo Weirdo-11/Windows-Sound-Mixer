@@ -6,6 +6,7 @@ def test_initial_field_values(qapp, settings):
     window = SettingsWindow(settings)
 
     assert window._autostart_checkbox.isChecked() == settings.get_autostart_enabled()
+    assert window._transparency_checkbox.isChecked() == settings.get_transparency_enabled()
     assert window._tooltip_delay_spinbox.value() == settings.get_tooltip_delay_ms()
     assert window._arrow_step_spinbox.value() == round(settings.get_arrow_step() * 100)
     assert window._scroll_step_spinbox.value() == round(settings.get_scroll_step() * 100)
@@ -24,6 +25,7 @@ def test_accept_saves_general_settings(qapp, settings):
     window = SettingsWindow(settings)
 
     window._autostart_checkbox.setChecked(True)
+    window._transparency_checkbox.setChecked(False)
     window._tooltip_delay_spinbox.setValue(1000)
     window._arrow_step_spinbox.setValue(10)
     window._scroll_step_spinbox.setValue(4)
@@ -31,10 +33,24 @@ def test_accept_saves_general_settings(qapp, settings):
     window.accept()
 
     assert settings.get_autostart_enabled() is True
+    assert settings.get_transparency_enabled() is False
     assert settings.get_tooltip_delay_ms() == 1000
     assert settings.get_arrow_step() == 0.1
     assert settings.get_scroll_step() == 0.04
     assert settings.get_default_app_volume() == 0.75
+
+
+def test_accept_applies_transparency_to_overlay(qapp, fake_backend, settings):
+    from sound_mixer.mixer.model import MixerModel
+
+    model = MixerModel(fake_backend, settings)
+    overlay = OverlayWindow(model, settings)
+    window = SettingsWindow(settings, overlay=overlay)
+
+    window._transparency_checkbox.setChecked(False)
+    window.accept()
+
+    assert "rgba(32, 32, 32, 140)" not in overlay._background.styleSheet()
 
 
 def test_ui_scale_slider_updates_settings_and_overlay_immediately(qapp, fake_backend, settings):

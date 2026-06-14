@@ -18,7 +18,8 @@ always-on-top overlay, the system tray, or global hotkeys.
   borderless games without stealing input focus or injecting into other
   processes.
 - Windows 11 acrylic transparency/blur effect with rounded corners and a dark
-  title bar.
+  title bar. The transparency can be turned off in Settings for a solid
+  background.
 - The overlay can be resized by dragging its right or bottom edge; the new
   size is restored on the next launch.
 - The focused entry is highlighted with the current Windows accent color.
@@ -79,6 +80,7 @@ is migrated automatically on load.
 | `volume_step`        | object          | `{ "arrow": float, "scroll": float }` - volume change per arrow-key press and per scroll wheel notch.                                      |
 | `ui_scale`           | float (0.5-3.0) | Overlay interface scale factor (fonts, icons, sliders). 1.0 is 100%.                                                                       |
 | `default_app_volume` | float (0.0-1.0) | Initial volume applied to apps the first time they appear, if not already in `app_volumes`.                                                |
+| `transparency_enabled` | bool          | Whether the overlay background uses the translucent acrylic effect. If disabled, the overlay has a solid background.                      |
 
 ### Hotkey actions
 
