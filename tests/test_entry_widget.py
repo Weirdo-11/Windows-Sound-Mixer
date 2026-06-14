@@ -1,8 +1,11 @@
+import re
+
+import pytest
 from PySide6.QtCore import QPoint, QPointF
 from PySide6.QtGui import QWheelEvent
 
 from sound_mixer.mixer.model import MixerEntry
-from sound_mixer.overlay.entry_widget import BASE_APP_ICON_PX, BASE_SPINBOX_WIDTH_PX, EntryWidget
+from sound_mixer.overlay.entry_widget import BASE_APP_ICON_PX, BASE_SPINBOX_WIDTH_PX, EntryWidget, slider_style
 
 
 def wheel_event(direction: int = 1) -> QWheelEvent:
@@ -140,3 +143,15 @@ def test_apply_scale_resizes_icon_label(qapp):
 
     assert widget._icon_label.width() == round(BASE_APP_ICON_PX * 2.0)
     assert widget._icon_label.height() == round(BASE_APP_ICON_PX * 2.0)
+
+
+@pytest.mark.parametrize("scale_percent", range(50, 301))
+def test_slider_handle_stays_round_at_every_scale(scale_percent):
+    css = slider_style(scale_percent / 100)
+
+    handle_size = int(re.search(r"QSlider::handle:horizontal \{\s*width: (\d+)px", css).group(1))
+    groove_height = int(re.search(r"QSlider::groove:horizontal \{\s*height: (\d+)px", css).group(1))
+
+    # The handle is centered over the groove with a negative margin; if the
+    # difference is odd, Qt renders the handle as a square instead of a circle.
+    assert (handle_size - groove_height) % 2 == 0

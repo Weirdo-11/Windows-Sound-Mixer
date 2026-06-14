@@ -14,6 +14,12 @@ BASE_SPINBOX_WIDTH_PX = 52
 def slider_style(scale: float) -> str:
     groove_height = max(2, round(4 * scale))
     handle_size = round(14 * scale)
+    # Qt renders the handle as a flat square instead of a circle if the
+    # negative margin can't evenly center it over the groove, so make sure
+    # handle_size and groove_height have matching parity.
+    if (handle_size - groove_height) % 2:
+        handle_size += 1
+    margin = (handle_size - groove_height) // 2
     return f"""
 QSlider::groove:horizontal {{
     height: {groove_height}px;
@@ -23,7 +29,7 @@ QSlider::groove:horizontal {{
 QSlider::handle:horizontal {{
     width: {handle_size}px;
     height: {handle_size}px;
-    margin: -{(handle_size - groove_height) // 2}px 0;
+    margin: -{margin}px 0;
     background: #cccccc;
     border-radius: {handle_size // 2}px;
 }}
