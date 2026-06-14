@@ -1,9 +1,8 @@
 from PySide6.QtCore import QPoint, QPointF
 from PySide6.QtGui import QWheelEvent
-from PySide6.QtWidgets import QSizePolicy
 
 from sound_mixer.mixer.model import MixerEntry
-from sound_mixer.overlay.entry_widget import BASE_SPINBOX_WIDTH_PX, EntryWidget
+from sound_mixer.overlay.entry_widget import BASE_APP_ICON_PX, BASE_SPINBOX_WIDTH_PX, EntryWidget
 
 
 def wheel_event(direction: int = 1) -> QWheelEvent:
@@ -68,12 +67,12 @@ def test_apply_scale_resizes_spinbox(qapp):
     assert widget._volume_spinbox.width() == round(BASE_SPINBOX_WIDTH_PX * 2.0)
 
 
-def test_entry_layout_places_name_above_volume_mixer(qapp):
+def test_entry_layout_places_icon_above_volume_mixer(qapp):
     widget = EntryWidget()
     layout = widget.layout()
     mixer_layout = layout.itemAt(1).layout()
 
-    assert layout.itemAt(0).widget() == widget._label
+    assert layout.itemAt(0).widget() == widget._icon_label
     assert mixer_layout.indexOf(widget._mute_button) >= 0
     assert mixer_layout.indexOf(widget._slider) >= 0
     assert mixer_layout.indexOf(widget._volume_spinbox) >= 0
@@ -108,16 +107,36 @@ def test_scroll_on_spinbox_uses_entry_wheel_handling(qapp):
     assert scrolled == [-1]
 
 
-def test_long_entry_name_is_limited_to_widget_width(qapp):
+def test_set_entry_shows_display_name_as_tooltip(qapp):
     widget = EntryWidget()
-    widget.resize(160, 90)
-    widget.show()
-    qapp.processEvents()
 
-    long_name = "Very Long Application Name That Should Not Stretch The Overlay"
-    widget.set_entry(MixerEntry(key="long.exe", display_name=long_name, volume=0.5, muted=False, is_master=False), focused=False)
-    qapp.processEvents()
+    widget.set_entry(make_entry(volume=0.5), focused=False)
 
-    assert widget._label.text() != long_name
-    assert widget._label.sizePolicy().horizontalPolicy() == QSizePolicy.Policy.Ignored
-    assert widget._label.width() <= widget.width()
+    assert widget._icon_label.toolTip() == "Google Chrome"
+
+
+def test_set_entry_shows_volume_icon_for_master(qapp):
+    widget = EntryWidget()
+
+    widget.set_entry(
+        MixerEntry(key="master", display_name="System", volume=0.5, muted=False, is_master=True), focused=False
+    )
+
+    assert not widget._icon_label.pixmap().isNull()
+
+
+def test_set_entry_shows_fallback_icon_for_unknown_app(qapp):
+    widget = EntryWidget()
+
+    widget.set_entry(make_entry(volume=0.5), focused=False)
+
+    assert not widget._icon_label.pixmap().isNull()
+
+
+def test_apply_scale_resizes_icon_label(qapp):
+    widget = EntryWidget()
+
+    widget.apply_scale(2.0)
+
+    assert widget._icon_label.width() == round(BASE_APP_ICON_PX * 2.0)
+    assert widget._icon_label.height() == round(BASE_APP_ICON_PX * 2.0)

@@ -5,9 +5,10 @@ from sound_mixer.volume import clamp_volume
 
 
 class PycawAudioSession:
-    def __init__(self, process_name: str, display_name: str, controls: list) -> None:
+    def __init__(self, process_name: str, display_name: str, controls: list, icon_path: str = "") -> None:
         self.process_name = process_name
         self.display_name = display_name
+        self.icon_path = icon_path
         self.pid = controls[0].ProcessId
         self._controls = controls
 
@@ -42,6 +43,7 @@ class PycawAudioBackend:
 
     def refresh(self) -> None:
         grouped: dict[str, list] = {}
+        icon_paths: dict[str, str] = {}
         for session in AudioUtilities.GetAllSessions():
             process = session.Process
             if process is None:
@@ -50,10 +52,16 @@ class PycawAudioBackend:
                 process_name = process.name()
             except psutil.Error:
                 continue
-            grouped.setdefault(process_name.lower(), []).append(session)
+            key = process_name.lower()
+            grouped.setdefault(key, []).append(session)
+            if key not in icon_paths:
+                try:
+                    icon_paths[key] = process.exe()
+                except psutil.Error:
+                    icon_paths[key] = ""
 
         self._sessions = [
-            PycawAudioSession(process_name, controls[0].DisplayName or process_name, controls)
+            PycawAudioSession(process_name, controls[0].DisplayName or process_name, controls, icon_paths.get(process_name, ""))
             for process_name, controls in grouped.items()
         ]
 

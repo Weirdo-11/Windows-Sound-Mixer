@@ -8,6 +8,7 @@ class FakeAudioSession:
     pid: int
     process_name: str
     display_name: str
+    icon_path: str = ""
     volume: float = 1.0
     muted: bool = False
 

@@ -6,6 +6,7 @@ class AudioSession(Protocol):
     pid: int
     process_name: str
     display_name: str
+    icon_path: str
     volume: float
     muted: bool
 

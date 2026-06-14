@@ -16,6 +16,7 @@ class MixerEntry:
     volume: float
     muted: bool
     is_master: bool = False
+    icon_path: str = ""
 
 
 class MixerModel:
@@ -52,6 +53,7 @@ class MixerModel:
                     display_name=session.display_name,
                     volume=session.volume,
                     muted=session.muted,
+                    icon_path=session.icon_path,
                 )
             )
 

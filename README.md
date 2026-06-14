@@ -7,8 +7,10 @@ always-on-top overlay, the system tray, or global hotkeys.
 ## Features
 
 - One overlay listing the system/master volume plus every app currently
-  playing audio, each entry showing the app name above its slider, numeric
-  volume field, and mute button.
+  playing audio, each entry showing the app's own icon (the app's display
+  name is shown as a tooltip) above its slider, numeric volume field, and mute
+  button. The system entry uses a speaker icon, and apps whose icon can't be
+  read use a generic fallback icon.
 - Per-application volume levels and mute state persist between restarts.
 - Always-on-top, frameless overlay that stays visible over fullscreen and
   borderless games without stealing input focus or injecting into other

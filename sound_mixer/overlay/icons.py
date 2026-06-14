@@ -1,10 +1,10 @@
-from PySide6.QtCore import QEvent, QPoint, QTimer
+from PySide6.QtCore import QEvent, QFileInfo, QPoint, QTimer
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QToolButton, QToolTip
+from PySide6.QtWidgets import QFileIconProvider, QToolButton, QToolTip
 
 from sound_mixer.paths import resource_path
 
-ICON_NAMES = ("volume", "muted", "settings", "pin", "close", "toggle_on", "toggle_off")
+ICON_NAMES = ("volume", "muted", "settings", "pin", "close", "toggle_on", "toggle_off", "app")
 
 
 def icon_path(name: str) -> str:
@@ -13,6 +13,14 @@ def icon_path(name: str) -> str:
 
 def load_icon(name: str) -> QIcon:
     return QIcon(icon_path(name))
+
+
+def load_app_icon(exe_path: str) -> QIcon:
+    if exe_path and QFileInfo(exe_path).exists():
+        icon = QFileIconProvider().icon(QFileInfo(exe_path))
+        if not icon.isNull():
+            return icon
+    return load_icon("app")
 
 
 def toggle_switch_style(object_name: str) -> str:
