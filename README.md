@@ -15,10 +15,12 @@ always-on-top overlay, the system tray, or global hotkeys.
   processes.
 - Windows 11 acrylic transparency/blur effect with rounded corners and a dark
   title bar.
-- The overlay's width can be resized by dragging its right edge; the new size
-  is restored on the next launch.
+- The overlay can be resized by dragging its right or bottom edge; the new
+  size is restored on the next launch.
+- The focused entry is highlighted with the current Windows accent color.
 - Mouse control: drag sliders, scroll to adjust volume, click an entry to
-  focus it.
+  focus it. Scrolling over an entry's slider or volume field also adjusts its
+  volume.
 - Keyboard control: Up/Down moves focus between entries, Left/Right adjusts
   the focused entry's volume.
 - Configurable global hotkeys (default `Ctrl+Alt+Num5` toggles the overlay),
