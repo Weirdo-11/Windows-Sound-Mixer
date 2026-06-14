@@ -15,9 +15,10 @@ class AutostartUnavailableError(RuntimeError):
 
 
 class AutostartManager:
-    def __init__(self, app_name: str = APP_NAME, key_path: str = KEY_PATH) -> None:
+    def __init__(self, app_name: str = APP_NAME, key_path: str = KEY_PATH, registry=winreg) -> None:
         self._app_name = app_name
         self._key_path = key_path
+        self._registry = registry
 
     def _command(self) -> str:
         if getattr(sys, "frozen", False):
@@ -29,27 +30,30 @@ class AutostartManager:
         return f'"{pythonw}" -m sound_mixer'
 
     def _require_windows(self) -> None:
-        if winreg is None:
+        if self._registry is None:
             raise AutostartUnavailableError("Autostart is only available on Windows")
 
     def is_enabled(self) -> bool:
         self._require_windows()
+        registry = self._registry
         try:
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, self._key_path, 0, winreg.KEY_READ) as key:
-                value, _ = winreg.QueryValueEx(key, self._app_name)
+            with registry.OpenKey(registry.HKEY_CURRENT_USER, self._key_path, 0, registry.KEY_READ) as key:
+                value, _ = registry.QueryValueEx(key, self._app_name)
         except FileNotFoundError:
             return False
         return value == self._command()
 
     def enable(self) -> None:
         self._require_windows()
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, self._key_path, 0, winreg.KEY_SET_VALUE) as key:
-            winreg.SetValueEx(key, self._app_name, 0, winreg.REG_SZ, self._command())
+        registry = self._registry
+        with registry.OpenKey(registry.HKEY_CURRENT_USER, self._key_path, 0, registry.KEY_SET_VALUE) as key:
+            registry.SetValueEx(key, self._app_name, 0, registry.REG_SZ, self._command())
 
     def disable(self) -> None:
         self._require_windows()
+        registry = self._registry
         try:
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, self._key_path, 0, winreg.KEY_SET_VALUE) as key:
-                winreg.DeleteValue(key, self._app_name)
+            with registry.OpenKey(registry.HKEY_CURRENT_USER, self._key_path, 0, registry.KEY_SET_VALUE) as key:
+                registry.DeleteValue(key, self._app_name)
         except FileNotFoundError:
             pass

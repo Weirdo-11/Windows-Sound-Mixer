@@ -68,10 +68,8 @@ def test_combo_to_hotkey_rejects_multiple_non_modifier_keys():
         combo_to_hotkey("ctrl+a+b")
 
 
-@pytest.mark.parametrize("hotkey", DEFAULT_HOTKEYS)
+@pytest.mark.parametrize("hotkey", [hotkey for hotkey in DEFAULT_HOTKEYS if hotkey["combo"]])
 def test_default_hotkeys_convert_successfully(hotkey):
-    if not hotkey["combo"]:
-        pytest.skip("empty combo")
     combo_to_hotkey(hotkey["combo"])
 
 
