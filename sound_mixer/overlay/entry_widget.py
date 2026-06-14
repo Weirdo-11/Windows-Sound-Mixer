@@ -1,6 +1,6 @@
 from PySide6.QtCore import QEvent, QSize, Qt, Signal
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QSlider, QSpinBox, QVBoxLayout
+from PySide6.QtWidgets import QAbstractSpinBox, QFrame, QHBoxLayout, QLabel, QSlider, QSpinBox, QVBoxLayout
 
 from sound_mixer.mixer.model import MixerEntry
 from sound_mixer.overlay.icons import DelayedTooltipButton, load_app_icon, load_icon
@@ -8,7 +8,7 @@ from sound_mixer.overlay.icons import DelayedTooltipButton, load_app_icon, load_
 BASE_ICON_PX = 16
 BASE_APP_ICON_PX = 24
 BASE_SLIDER_HEIGHT_PX = 20
-BASE_SPINBOX_WIDTH_PX = 52
+BASE_FONT_PX = 13
 
 
 def slider_style(scale: float) -> str:
@@ -65,20 +65,26 @@ class EntryWidget(QFrame):
         self._volume_spinbox = QSpinBox(self)
         self._volume_spinbox.setRange(0, 100)
         self._volume_spinbox.setSuffix("%")
+        self._volume_spinbox.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self._volume_spinbox.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
         self._volume_spinbox.valueChanged.connect(self._on_spinbox_changed)
 
         self._slider.installEventFilter(self)
         self._volume_spinbox.installEventFilter(self)
 
+        icon_row = QHBoxLayout()
+        icon_row.setContentsMargins(0, 0, 0, 0)
+        icon_row.addWidget(self._icon_label)
+        icon_row.addWidget(self._volume_spinbox)
+        icon_row.addStretch(1)
+
         mixer_row = QHBoxLayout()
         mixer_row.setContentsMargins(0, 0, 0, 0)
         mixer_row.addWidget(self._mute_button)
         mixer_row.addWidget(self._slider, 1)
-        mixer_row.addWidget(self._volume_spinbox)
 
         layout = QVBoxLayout(self)
-        layout.addWidget(self._icon_label)
+        layout.addLayout(icon_row)
         layout.addLayout(mixer_row)
 
     def apply_scale(self, scale: float) -> None:
@@ -86,7 +92,11 @@ class EntryWidget(QFrame):
         self._mute_button.setIconSize(QSize(icon_px, icon_px))
         self._slider.setStyleSheet(slider_style(scale))
         self._slider.setMinimumHeight(round(BASE_SLIDER_HEIGHT_PX * scale))
-        self._volume_spinbox.setFixedWidth(max(BASE_SPINBOX_WIDTH_PX, round(BASE_SPINBOX_WIDTH_PX * scale)))
+
+        font = self._volume_spinbox.font()
+        font.setPixelSize(round(BASE_FONT_PX * scale))
+        self._volume_spinbox.setFont(font)
+        self._volume_spinbox.setFixedWidth(self._volume_spinbox.minimumSizeHint().width())
 
         self._app_icon_px = round(BASE_APP_ICON_PX * scale)
         self._icon_label.setFixedSize(self._app_icon_px, self._app_icon_px)

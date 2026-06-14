@@ -55,7 +55,7 @@ def test_accept_applies_transparency_to_overlay(qapp, fake_backend, settings):
 
 def test_ui_scale_slider_updates_settings_and_overlay_immediately(qapp, fake_backend, settings):
     from sound_mixer.mixer.model import MixerModel
-    from sound_mixer.overlay.entry_widget import BASE_SPINBOX_WIDTH_PX
+    from sound_mixer.overlay.entry_widget import BASE_FONT_PX
 
     model = MixerModel(fake_backend, settings)
     overlay = OverlayWindow(model, settings)
@@ -65,7 +65,9 @@ def test_ui_scale_slider_updates_settings_and_overlay_immediately(qapp, fake_bac
 
     assert settings.get_ui_scale() == 1.5
     assert window._ui_scale_label.text() == "150%"
-    assert overlay._entry_widgets[0]._volume_spinbox.width() == round(BASE_SPINBOX_WIDTH_PX * 1.5)
+    spinbox = overlay._entry_widgets[0]._volume_spinbox
+    assert spinbox.font().pixelSize() == round(BASE_FONT_PX * 1.5)
+    assert spinbox.width() == spinbox.minimumSizeHint().width()
 
 
 def test_autostart_checkbox_uses_toggle_switch_style(qapp, settings):

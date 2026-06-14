@@ -5,7 +5,7 @@ from PySide6.QtCore import QPoint, QPointF
 from PySide6.QtGui import QWheelEvent
 
 from sound_mixer.mixer.model import MixerEntry
-from sound_mixer.overlay.entry_widget import BASE_APP_ICON_PX, BASE_SPINBOX_WIDTH_PX, EntryWidget, slider_style
+from sound_mixer.overlay.entry_widget import BASE_APP_ICON_PX, BASE_FONT_PX, EntryWidget, slider_style
 
 
 def wheel_event(direction: int = 1) -> QWheelEvent:
@@ -62,31 +62,32 @@ def test_set_entry_does_not_emit_volume_changed(qapp):
     assert received == []
 
 
-def test_apply_scale_resizes_spinbox(qapp):
+def test_apply_scale_resizes_spinbox_font(qapp):
     widget = EntryWidget()
 
     widget.apply_scale(2.0)
 
-    assert widget._volume_spinbox.width() == round(BASE_SPINBOX_WIDTH_PX * 2.0)
+    assert widget._volume_spinbox.font().pixelSize() == round(BASE_FONT_PX * 2.0)
 
 
-def test_apply_scale_keeps_spinbox_wide_enough_below_base_scale(qapp):
+def test_apply_scale_fits_spinbox_to_max_value_text(qapp):
     widget = EntryWidget()
 
-    widget.apply_scale(0.5)
+    widget.apply_scale(2.0)
 
-    assert widget._volume_spinbox.width() == BASE_SPINBOX_WIDTH_PX
+    assert widget._volume_spinbox.width() == widget._volume_spinbox.minimumSizeHint().width()
 
 
-def test_entry_layout_places_icon_above_volume_mixer(qapp):
+def test_entry_layout_places_icon_row_above_mixer_row(qapp):
     widget = EntryWidget()
     layout = widget.layout()
+    icon_layout = layout.itemAt(0).layout()
     mixer_layout = layout.itemAt(1).layout()
 
-    assert layout.itemAt(0).widget() == widget._icon_label
+    assert icon_layout.indexOf(widget._icon_label) >= 0
+    assert icon_layout.indexOf(widget._volume_spinbox) >= 0
     assert mixer_layout.indexOf(widget._mute_button) >= 0
     assert mixer_layout.indexOf(widget._slider) >= 0
-    assert mixer_layout.indexOf(widget._volume_spinbox) >= 0
 
 
 def test_scroll_on_slider_uses_entry_wheel_handling(qapp):
