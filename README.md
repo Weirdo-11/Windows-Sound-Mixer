@@ -28,8 +28,7 @@ always-on-top overlay, the system tray, or global hotkeys.
 - Keyboard control: Up/Down moves focus between entries, Left/Right adjusts
   the focused entry's volume.
 - Configurable global hotkeys (default `Ctrl+Alt+Num5` toggles the overlay),
-  captured from a shortcut input and edited as PowerToys Keyboard
-  Manager-style key selectors inside the same input field, then registered
+  captured from a shortcut input, then registered
   via the native Windows `RegisterHotKey` API for compatibility with
   key-remapping tools. Global hotkeys are paused while Settings is open so
   editing a shortcut cannot trigger an existing action.
@@ -93,7 +92,7 @@ is migrated automatically on load.
 | `mute_toggle`    | (none)          | Toggle mute on the focused entry.                      |
 
 Hotkey combos are stored as `+`-separated key names, e.g. `ctrl+alt+num5`,
-`ctrl+shift+f9`, `win+s`. In Settings they are shown with PowerToys-style key
+`ctrl+shift+f9`, `win+s`. In Settings they are shown key
 names such as `Ctrl (Left)`, `Alt (Left)`, and `NumPad 5` as selectors inside
 the same shortcut input. Modifier keys: `ctrl`, `alt`, `shift`, `win`. Numpad
 digit keys are written as `num0`-`num9`.
