@@ -21,7 +21,7 @@ from sound_mixer import __version__
 from sound_mixer.autostart.registry import AutostartManager, AutostartUnavailableError
 from sound_mixer.hotkeys.binding import normalize_combo, parse_combo
 from sound_mixer.hotkeys.manager import HotkeyManager
-from sound_mixer.overlay.icons import toggle_switch_style
+from sound_mixer.overlay.icons import icon_path, toggle_switch_style
 from sound_mixer.overlay.window import OverlayWindow
 from sound_mixer.settings.schema import MAX_UI_SCALE, MIN_UI_SCALE
 from sound_mixer.settings.store import SettingsStore
@@ -176,31 +176,37 @@ class HotkeyComboEditor(QFrame):
         box = QComboBox(self)
         box.setMinimumHeight(32)
         box.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
+        arrow_path = icon_path("dropdown_arrow").replace("\\", "/")
         box.setStyleSheet(
-            """
-            QComboBox {
+            f"""
+            QComboBox {{
                 background: #626071;
                 border: 0;
                 border-radius: 7px;
                 color: #f2f2f5;
                 padding: 5px 20px 5px 9px;
-            }
-            QComboBox:hover {
+            }}
+            QComboBox:hover {{
                 background: #716f82;
-            }
-            QComboBox:focus {
+            }}
+            QComboBox:focus {{
                 background: #78758a;
-            }
-            QComboBox::drop-down {
+            }}
+            QComboBox::drop-down {{
                 border: 0;
                 width: 18px;
-            }
-            QComboBox QAbstractItemView {
+            }}
+            QComboBox::down-arrow {{
+                image: url({arrow_path});
+                width: 12px;
+                height: 12px;
+            }}
+            QComboBox QAbstractItemView {{
                 background: #2d2d30;
                 border: 1px solid #56565c;
                 color: #f2f2f5;
                 selection-background-color: #626071;
-            }
+            }}
             """
         )
         for value, label in options:
