@@ -52,12 +52,13 @@ class SettingsStore:
 
     def _clamp(self) -> None:
         self.data["master_volume"] = clamp_volume(self.data["master_volume"])
+        self.data["default_app_volume"] = clamp_volume(self.data["default_app_volume"])
         for app in self.data["app_volumes"].values():
             app["volume"] = clamp_volume(app.get("volume", 1.0))
 
     def get_app_volume(self, exe: str) -> float:
         exe = exe.lower()
-        return self.data["app_volumes"].get(exe, {}).get("volume", 1.0)
+        return self.data["app_volumes"].get(exe, {}).get("volume", self.data["default_app_volume"])
 
     def set_app_volume(self, exe: str, level: float) -> None:
         exe = exe.lower()
@@ -142,6 +143,13 @@ class SettingsStore:
 
     def set_ui_scale(self, scale: float) -> None:
         self.data["ui_scale"] = max(MIN_UI_SCALE, min(MAX_UI_SCALE, scale))
+        self.save()
+
+    def get_default_app_volume(self) -> float:
+        return self.data["default_app_volume"]
+
+    def set_default_app_volume(self, level: float) -> None:
+        self.data["default_app_volume"] = clamp_volume(level)
         self.save()
 
 

@@ -13,6 +13,10 @@ always-on-top overlay, the system tray, or global hotkeys.
 - Always-on-top, frameless overlay that stays visible over fullscreen and
   borderless games without stealing input focus or injecting into other
   processes.
+- Windows 11 acrylic transparency/blur effect with rounded corners and a dark
+  title bar.
+- The overlay's width can be resized by dragging its right edge; the new size
+  is restored on the next launch.
 - Mouse control: drag sliders, scroll to adjust volume, click an entry to
   focus it.
 - Keyboard control: Up/Down moves focus between entries, Left/Right adjusts
@@ -21,7 +25,9 @@ always-on-top overlay, the system tray, or global hotkeys.
 - System tray icon with Show/Hide Overlay, Settings, Start with Windows, and
   Exit.
 - Optional autostart on Windows login via the `HKCU\...\Run` registry key (no
-  administrator rights required).
+  administrator rights required), toggled with a switch in Settings.
+- The interface scale in Settings is a slider that applies to the overlay
+  immediately as it's dragged.
 
 ## Running from source
 
@@ -62,6 +68,7 @@ is migrated automatically on load.
 | `tooltip_delay_ms` | integer | Delay, in milliseconds, before action button tooltips appear. |
 | `volume_step` | object | `{ "arrow": float, "scroll": float }` - volume change per arrow-key press and per scroll wheel notch. |
 | `ui_scale` | float (0.5-3.0) | Overlay interface scale factor (fonts, icons, sliders). 1.0 is 100%. |
+| `default_app_volume` | float (0.0-1.0) | Initial volume applied to apps the first time they appear, if not already in `app_volumes`. |
 
 ### Hotkey actions
 
@@ -93,6 +100,8 @@ non-Windows platforms.
 - True exclusive-fullscreen games (not borderless or "fullscreen windowed")
   can render above the overlay; use borderless/windowed fullscreen mode for
   the overlay to remain visible.
+- The acrylic blur effect requires Windows 11 22H2 or later; on older Windows
+  versions the overlay falls back to a plain semi-transparent background.
 - Global hotkeys are subject to Windows UIPI: an elevated foreground
   application will not receive hotkeys from a non-elevated Sound Mixer, and
   vice versa.

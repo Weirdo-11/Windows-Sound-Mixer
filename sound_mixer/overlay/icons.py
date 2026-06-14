@@ -4,7 +4,7 @@ from PySide6.QtWidgets import QToolButton, QToolTip
 
 from sound_mixer.paths import resource_path
 
-ICON_NAMES = ("volume", "muted", "settings", "pin", "close")
+ICON_NAMES = ("volume", "muted", "settings", "pin", "close", "toggle_on", "toggle_off")
 
 
 def icon_path(name: str) -> str:
@@ -13,6 +13,21 @@ def icon_path(name: str) -> str:
 
 def load_icon(name: str) -> QIcon:
     return QIcon(icon_path(name))
+
+
+def toggle_switch_style(object_name: str) -> str:
+    off_path = icon_path("toggle_off").replace("\\", "/")
+    on_path = icon_path("toggle_on").replace("\\", "/")
+    return f"""
+QCheckBox#{object_name}::indicator {{
+    width: 36px;
+    height: 20px;
+    image: url({off_path});
+}}
+QCheckBox#{object_name}::indicator:checked {{
+    image: url({on_path});
+}}
+"""
 
 
 class DelayedTooltipButton(QToolButton):

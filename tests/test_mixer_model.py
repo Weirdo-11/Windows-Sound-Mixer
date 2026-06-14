@@ -44,6 +44,21 @@ def test_persisted_volume_applied_on_first_sight(tmp_path):
     assert chrome_session.volume == pytest.approx(0.3)
 
 
+def test_default_app_volume_applied_on_first_sight(tmp_path):
+    store = SettingsStore(tmp_path / "settings.json")
+    store.load()
+    store.set_default_app_volume(0.3)
+
+    backend = make_backend()
+    model = MixerModel(backend, store)
+
+    chrome_entry = next(e for e in model.entries if e.key == "chrome.exe")
+    assert chrome_entry.volume == pytest.approx(0.3)
+
+    chrome_session = next(s for s in backend.enumerate_sessions() if s.process_name == "chrome.exe")
+    assert chrome_session.volume == pytest.approx(0.3)
+
+
 def test_move_focus_clamped(settings):
     model = MixerModel(make_backend(), settings)
 

@@ -32,4 +32,5 @@ DEFAULT_SETTINGS = {
         "scroll": 0.02,
     },
     "ui_scale": 1.0,
+    "default_app_volume": 1.0,
 }

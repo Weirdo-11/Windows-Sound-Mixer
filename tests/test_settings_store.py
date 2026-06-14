@@ -123,3 +123,37 @@ def test_partial_file_fills_in_ui_scale(tmp_path):
     data = store.load()
 
     assert data["ui_scale"] == DEFAULT_SETTINGS["ui_scale"]
+
+
+def test_default_app_volume_default_and_round_trip(tmp_path):
+    store = SettingsStore(tmp_path / "settings.json")
+    store.load()
+
+    assert store.get_default_app_volume() == DEFAULT_SETTINGS["default_app_volume"]
+
+    store.set_default_app_volume(0.3)
+    assert store.get_default_app_volume() == 0.3
+
+    reloaded = SettingsStore(tmp_path / "settings.json")
+    reloaded.load()
+    assert reloaded.get_default_app_volume() == 0.3
+
+
+def test_default_app_volume_clamps_to_valid_range(tmp_path):
+    store = SettingsStore(tmp_path / "settings.json")
+    store.load()
+
+    store.set_default_app_volume(2.0)
+    assert store.get_default_app_volume() == 1.0
+
+    store.set_default_app_volume(-1.0)
+    assert store.get_default_app_volume() == 0.0
+
+
+def test_app_volume_falls_back_to_default_app_volume(tmp_path):
+    store = SettingsStore(tmp_path / "settings.json")
+    store.load()
+
+    store.set_default_app_volume(0.4)
+
+    assert store.get_app_volume("newapp.exe") == 0.4

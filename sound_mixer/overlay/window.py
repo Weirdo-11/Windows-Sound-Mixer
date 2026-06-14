@@ -5,6 +5,7 @@ from sound_mixer import __version__
 from sound_mixer.mixer.model import MixerModel
 from sound_mixer.overlay.entry_widget import EntryWidget
 from sound_mixer.overlay.icons import DelayedTooltipButton, load_icon
+from sound_mixer.overlay.win_effects import apply_acrylic_effect
 from sound_mixer.settings.store import SettingsStore
 
 REFRESH_INTERVAL_MS = 1000
@@ -13,16 +14,51 @@ GEOMETRY_SAVE_DELAY_MS = 300
 BASE_FONT_PX = 13
 BASE_ICON_PX = 16
 
+MIN_OVERLAY_WIDTH = 200
+RESIZE_HANDLE_WIDTH_PX = 6
+
 
 def background_style(scale: float) -> str:
     font_px = round(BASE_FONT_PX * scale)
     return f"""
 #background {{
-    background-color: rgba(32, 32, 32, 235);
+    background-color: rgba(32, 32, 32, 140);
     border-radius: 8px;
     font-size: {font_px}px;
 }}
+#background QScrollArea, #background QScrollArea > QWidget, #background #entryContainer, #background #entryWidget {{
+    background: transparent;
+    border: none;
+}}
 """
+
+
+class _ResizeHandle(QWidget):
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self.setCursor(Qt.CursorShape.SizeHorCursor)
+        self._drag_start_x: int | None = None
+        self._start_width = 0
+
+    def mousePressEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._drag_start_x = event.globalPosition().toPoint().x()
+            self._start_width = self.window().width()
+            self.window()._pause_refresh()
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event) -> None:
+        if self._drag_start_x is not None and event.buttons() & Qt.MouseButton.LeftButton:
+            delta = event.globalPosition().toPoint().x() - self._drag_start_x
+            new_width = max(MIN_OVERLAY_WIDTH, self._start_width + delta)
+            window = self.window()
+            window.resize(new_width, window.height())
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event) -> None:
+        self._drag_start_x = None
+        self.window()._resume_refresh()
+        super().mouseReleaseEvent(event)
 
 
 class _TitleBar(QFrame):
@@ -33,6 +69,7 @@ class _TitleBar(QFrame):
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
             self._drag_offset = event.globalPosition().toPoint() - self.window().pos()
+            self.window()._pause_refresh()
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event) -> None:
@@ -42,6 +79,7 @@ class _TitleBar(QFrame):
 
     def mouseReleaseEvent(self, event) -> None:
         self._drag_offset = None
+        self.window()._resume_refresh()
         super().mouseReleaseEvent(event)
 
 
@@ -61,9 +99,11 @@ class OverlayWindow(QWidget):
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+        self.setMinimumWidth(MIN_OVERLAY_WIDTH)
         self._build_ui()
         self._restore_geometry()
         self.apply_scale()
+        apply_acrylic_effect(self)
 
         self._geometry_save_timer = QTimer(self)
         self._geometry_save_timer.setSingleShot(True)
@@ -87,9 +127,11 @@ class OverlayWindow(QWidget):
         layout = QVBoxLayout(background)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        layout.addWidget(self._build_title_bar(background))
+        title_bar = self._build_title_bar(background)
+        layout.addWidget(title_bar)
 
         self._container = QWidget(background)
+        self._container.setObjectName("entryContainer")
         self._container_layout = QVBoxLayout(self._container)
         self._container_layout.setContentsMargins(4, 4, 4, 4)
         self._container_layout.setSpacing(2)
@@ -101,6 +143,9 @@ class OverlayWindow(QWidget):
         scroll_area.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         scroll_area.setFrameShape(QFrame.Shape.NoFrame)
         layout.addWidget(scroll_area)
+
+        self._title_bar = title_bar
+        self._resize_handle = _ResizeHandle(self)
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
@@ -151,12 +196,23 @@ class OverlayWindow(QWidget):
         super().moveEvent(event)
 
     def resizeEvent(self, event) -> None:
+        title_bar_height = self._title_bar.height()
+        self._resize_handle.setGeometry(
+            self.width() - RESIZE_HANDLE_WIDTH_PX, title_bar_height, RESIZE_HANDLE_WIDTH_PX, self.height() - title_bar_height
+        )
+        self._resize_handle.raise_()
         self._schedule_geometry_save()
         super().resizeEvent(event)
 
     def _refresh(self) -> None:
         self._model.refresh()
         self._sync_entry_widgets()
+
+    def _pause_refresh(self) -> None:
+        self._refresh_timer.stop()
+
+    def _resume_refresh(self) -> None:
+        self._refresh_timer.start(REFRESH_INTERVAL_MS)
 
     def refresh_view(self) -> None:
         self._sync_entry_widgets()

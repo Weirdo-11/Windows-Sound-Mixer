@@ -1,12 +1,15 @@
 from typing import Optional
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
     QDialogButtonBox,
     QFormLayout,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
+    QSlider,
     QSpinBox,
     QTabWidget,
     QVBoxLayout,
@@ -17,6 +20,7 @@ from sound_mixer import __version__
 from sound_mixer.autostart.registry import AutostartManager, AutostartUnavailableError
 from sound_mixer.hotkeys.binding import normalize_combo, parse_combo
 from sound_mixer.hotkeys.manager import HotkeyManager
+from sound_mixer.overlay.icons import toggle_switch_style
 from sound_mixer.overlay.window import OverlayWindow
 from sound_mixer.settings.schema import MAX_UI_SCALE, MIN_UI_SCALE
 from sound_mixer.settings.store import SettingsStore
@@ -72,6 +76,8 @@ class SettingsWindow(QDialog):
         form = QFormLayout(tab)
 
         self._autostart_checkbox = QCheckBox("Start with Windows", tab)
+        self._autostart_checkbox.setObjectName("autostartToggle")
+        self._autostart_checkbox.setStyleSheet(toggle_switch_style("autostartToggle"))
         self._autostart_checkbox.setChecked(self._settings.get_autostart_enabled())
         form.addRow(self._autostart_checkbox)
 
@@ -94,14 +100,37 @@ class SettingsWindow(QDialog):
         self._scroll_step_spinbox.setValue(round(self._settings.get_scroll_step() * 100))
         form.addRow("Scroll volume step", self._scroll_step_spinbox)
 
-        self._ui_scale_spinbox = QSpinBox(tab)
-        self._ui_scale_spinbox.setRange(round(MIN_UI_SCALE * 100), round(MAX_UI_SCALE * 100))
-        self._ui_scale_spinbox.setSingleStep(10)
-        self._ui_scale_spinbox.setSuffix(" %")
-        self._ui_scale_spinbox.setValue(round(self._settings.get_ui_scale() * 100))
-        form.addRow("Interface scale", self._ui_scale_spinbox)
+        self._default_app_volume_spinbox = QSpinBox(tab)
+        self._default_app_volume_spinbox.setRange(0, 100)
+        self._default_app_volume_spinbox.setSuffix(" %")
+        self._default_app_volume_spinbox.setValue(round(self._settings.get_default_app_volume() * 100))
+        form.addRow("Default volume for new apps", self._default_app_volume_spinbox)
+
+        scale_row = QWidget(tab)
+        scale_layout = QHBoxLayout(scale_row)
+        scale_layout.setContentsMargins(0, 0, 0, 0)
+
+        self._ui_scale_slider = QSlider(Qt.Orientation.Horizontal, scale_row)
+        self._ui_scale_slider.setRange(round(MIN_UI_SCALE * 100), round(MAX_UI_SCALE * 100))
+        self._ui_scale_slider.setSingleStep(10)
+        self._ui_scale_slider.setValue(round(self._settings.get_ui_scale() * 100))
+
+        self._ui_scale_label = QLabel(f"{self._ui_scale_slider.value()}%", scale_row)
+        self._ui_scale_label.setMinimumWidth(40)
+
+        self._ui_scale_slider.valueChanged.connect(self._on_ui_scale_changed)
+
+        scale_layout.addWidget(self._ui_scale_slider)
+        scale_layout.addWidget(self._ui_scale_label)
+        form.addRow("Interface scale", scale_row)
 
         return tab
+
+    def _on_ui_scale_changed(self, value: int) -> None:
+        self._ui_scale_label.setText(f"{value}%")
+        self._settings.set_ui_scale(value / 100)
+        if self._overlay is not None:
+            self._overlay.apply_scale()
 
     def _build_hotkeys_tab(self) -> QWidget:
         tab = QWidget(self)
@@ -155,13 +184,10 @@ class SettingsWindow(QDialog):
         self._settings.set_tooltip_delay_ms(self._tooltip_delay_spinbox.value())
         self._settings.set_arrow_step(self._arrow_step_spinbox.value() / 100)
         self._settings.set_scroll_step(self._scroll_step_spinbox.value() / 100)
-        self._settings.set_ui_scale(self._ui_scale_spinbox.value() / 100)
+        self._settings.set_default_app_volume(self._default_app_volume_spinbox.value() / 100)
 
         for action, combo, enabled in hotkey_updates:
             self._settings.set_hotkey(action, combo, enabled)
-
-        if self._overlay is not None:
-            self._overlay.apply_scale()
 
         if self._autostart is not None:
             try:

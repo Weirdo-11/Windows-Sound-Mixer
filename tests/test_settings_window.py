@@ -1,3 +1,4 @@
+from sound_mixer.overlay.window import OverlayWindow
 from sound_mixer.settings_window.window import SettingsWindow
 
 
@@ -8,7 +9,8 @@ def test_initial_field_values(qapp, settings):
     assert window._tooltip_delay_spinbox.value() == settings.get_tooltip_delay_ms()
     assert window._arrow_step_spinbox.value() == round(settings.get_arrow_step() * 100)
     assert window._scroll_step_spinbox.value() == round(settings.get_scroll_step() * 100)
-    assert window._ui_scale_spinbox.value() == round(settings.get_ui_scale() * 100)
+    assert window._default_app_volume_spinbox.value() == round(settings.get_default_app_volume() * 100)
+    assert window._ui_scale_slider.value() == round(settings.get_ui_scale() * 100)
 
     hotkeys = settings.get_hotkeys()
     assert len(window._hotkey_rows) == len(hotkeys)
@@ -25,14 +27,36 @@ def test_accept_saves_general_settings(qapp, settings):
     window._tooltip_delay_spinbox.setValue(1000)
     window._arrow_step_spinbox.setValue(10)
     window._scroll_step_spinbox.setValue(4)
-    window._ui_scale_spinbox.setValue(150)
+    window._default_app_volume_spinbox.setValue(75)
     window.accept()
 
     assert settings.get_autostart_enabled() is True
     assert settings.get_tooltip_delay_ms() == 1000
     assert settings.get_arrow_step() == 0.1
     assert settings.get_scroll_step() == 0.04
+    assert settings.get_default_app_volume() == 0.75
+
+
+def test_ui_scale_slider_updates_settings_and_overlay_immediately(qapp, fake_backend, settings):
+    from sound_mixer.mixer.model import MixerModel
+    from sound_mixer.overlay.entry_widget import BASE_SPINBOX_WIDTH_PX
+
+    model = MixerModel(fake_backend, settings)
+    overlay = OverlayWindow(model, settings)
+    window = SettingsWindow(settings, overlay=overlay)
+
+    window._ui_scale_slider.setValue(150)
+
     assert settings.get_ui_scale() == 1.5
+    assert window._ui_scale_label.text() == "150%"
+    assert overlay._entry_widgets[0]._volume_spinbox.width() == round(BASE_SPINBOX_WIDTH_PX * 1.5)
+
+
+def test_autostart_checkbox_uses_toggle_switch_style(qapp, settings):
+    window = SettingsWindow(settings)
+
+    assert window._autostart_checkbox.objectName() == "autostartToggle"
+    assert "::indicator" in window._autostart_checkbox.styleSheet()
 
 
 def test_accept_saves_hotkeys(qapp, settings):
