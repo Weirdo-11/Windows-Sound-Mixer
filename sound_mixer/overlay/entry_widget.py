@@ -86,7 +86,7 @@ class EntryWidget(QFrame):
         self._mute_button.setIconSize(QSize(icon_px, icon_px))
         self._slider.setStyleSheet(slider_style(scale))
         self._slider.setMinimumHeight(round(BASE_SLIDER_HEIGHT_PX * scale))
-        self._volume_spinbox.setFixedWidth(round(BASE_SPINBOX_WIDTH_PX * scale))
+        self._volume_spinbox.setFixedWidth(max(BASE_SPINBOX_WIDTH_PX, round(BASE_SPINBOX_WIDTH_PX * scale)))
 
         self._app_icon_px = round(BASE_APP_ICON_PX * scale)
         self._icon_label.setFixedSize(self._app_icon_px, self._app_icon_px)

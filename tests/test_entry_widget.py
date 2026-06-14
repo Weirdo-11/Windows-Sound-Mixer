@@ -70,6 +70,14 @@ def test_apply_scale_resizes_spinbox(qapp):
     assert widget._volume_spinbox.width() == round(BASE_SPINBOX_WIDTH_PX * 2.0)
 
 
+def test_apply_scale_keeps_spinbox_wide_enough_below_base_scale(qapp):
+    widget = EntryWidget()
+
+    widget.apply_scale(0.5)
+
+    assert widget._volume_spinbox.width() == BASE_SPINBOX_WIDTH_PX
+
+
 def test_entry_layout_places_icon_above_volume_mixer(qapp):
     widget = EntryWidget()
     layout = widget.layout()
