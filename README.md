@@ -21,7 +21,9 @@ always-on-top overlay, the system tray, or global hotkeys.
   focus it.
 - Keyboard control: Up/Down moves focus between entries, Left/Right adjusts
   the focused entry's volume.
-- Configurable global hotkeys (default `Ctrl+Alt+Num5` toggles the overlay).
+- Configurable global hotkeys (default `Ctrl+Alt+Num5` toggles the overlay),
+  registered via the native Windows `RegisterHotKey` API for compatibility
+  with key-remapping tools such as PowerToys Keyboard Manager.
 - System tray icon with Show/Hide Overlay, Settings, Start with Windows, and
   Exit.
 - Optional autostart on Windows login via the `HKCU\...\Run` registry key (no

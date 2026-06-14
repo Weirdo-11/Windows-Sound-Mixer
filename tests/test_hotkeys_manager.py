@@ -1,32 +1,35 @@
 from sound_mixer.hotkeys import manager as manager_module
+from sound_mixer.hotkeys.binding import combo_to_hotkey
 from sound_mixer.hotkeys.manager import HotkeyManager
 
 
-class FakeKeyboard:
+class FakeUser32:
     def __init__(self) -> None:
-        self.hotkeys: dict[str, object] = {}
+        self.registered: dict[int, tuple[int, int]] = {}
 
-    def add_hotkey(self, combo, callback) -> None:
-        self.hotkeys[combo] = callback
+    def RegisterHotKey(self, hwnd, hotkey_id, modifiers, vk) -> bool:
+        self.registered[hotkey_id] = (modifiers, vk)
+        return True
 
-    def remove_hotkey(self, combo) -> None:
-        del self.hotkeys[combo]
+    def UnregisterHotKey(self, hwnd, hotkey_id) -> bool:
+        del self.registered[hotkey_id]
+        return True
 
 
 def test_start_registers_enabled_hotkeys(qapp, settings, monkeypatch):
-    fake_keyboard = FakeKeyboard()
-    monkeypatch.setattr(manager_module, "keyboard", fake_keyboard)
+    fake_user32 = FakeUser32()
+    monkeypatch.setattr(manager_module, "user32", fake_user32)
 
     hotkey_manager = HotkeyManager(settings)
     hotkey_manager.start()
 
-    assert "ctrl+alt+num 5" in fake_keyboard.hotkeys
-    assert len(fake_keyboard.hotkeys) == 1
+    assert len(fake_user32.registered) == 1
+    assert next(iter(fake_user32.registered.values())) == combo_to_hotkey("ctrl+alt+num5")
 
 
-def test_triggering_combo_emits_signal(qapp, settings, monkeypatch):
-    fake_keyboard = FakeKeyboard()
-    monkeypatch.setattr(manager_module, "keyboard", fake_keyboard)
+def test_triggering_hotkey_emits_signal(qapp, settings, monkeypatch):
+    fake_user32 = FakeUser32()
+    monkeypatch.setattr(manager_module, "user32", fake_user32)
 
     hotkey_manager = HotkeyManager(settings)
     hotkey_manager.start()
@@ -34,25 +37,26 @@ def test_triggering_combo_emits_signal(qapp, settings, monkeypatch):
     received = []
     hotkey_manager.toggle_overlay.connect(lambda: received.append(True))
 
-    fake_keyboard.hotkeys["ctrl+alt+num 5"]()
+    hotkey_id = next(iter(fake_user32.registered))
+    hotkey_manager._handle_hotkey(hotkey_id)
 
     assert received == [True]
 
 
 def test_stop_unregisters_hotkeys(qapp, settings, monkeypatch):
-    fake_keyboard = FakeKeyboard()
-    monkeypatch.setattr(manager_module, "keyboard", fake_keyboard)
+    fake_user32 = FakeUser32()
+    monkeypatch.setattr(manager_module, "user32", fake_user32)
 
     hotkey_manager = HotkeyManager(settings)
     hotkey_manager.start()
     hotkey_manager.stop()
 
-    assert fake_keyboard.hotkeys == {}
+    assert fake_user32.registered == {}
 
 
 def test_reload_replaces_hotkeys(qapp, settings, monkeypatch):
-    fake_keyboard = FakeKeyboard()
-    monkeypatch.setattr(manager_module, "keyboard", fake_keyboard)
+    fake_user32 = FakeUser32()
+    monkeypatch.setattr(manager_module, "user32", fake_user32)
 
     hotkey_manager = HotkeyManager(settings)
     hotkey_manager.start()
@@ -60,16 +64,31 @@ def test_reload_replaces_hotkeys(qapp, settings, monkeypatch):
     settings.set_hotkey("volume_up", "ctrl+up", enabled=True)
     hotkey_manager.reload()
 
-    assert "ctrl+alt+num 5" in fake_keyboard.hotkeys
-    assert "ctrl+up" in fake_keyboard.hotkeys
+    registered = set(fake_user32.registered.values())
+    assert combo_to_hotkey("ctrl+alt+num5") in registered
+    assert combo_to_hotkey("ctrl+up") in registered
+    assert len(registered) == 2
 
 
 def test_disabled_hotkey_is_not_registered(qapp, settings, monkeypatch):
-    fake_keyboard = FakeKeyboard()
-    monkeypatch.setattr(manager_module, "keyboard", fake_keyboard)
+    fake_user32 = FakeUser32()
+    monkeypatch.setattr(manager_module, "user32", fake_user32)
 
     settings.set_hotkey("toggle_overlay", "ctrl+alt+num5", enabled=False)
     hotkey_manager = HotkeyManager(settings)
     hotkey_manager.start()
 
-    assert fake_keyboard.hotkeys == {}
+    assert fake_user32.registered == {}
+
+
+def test_failed_registration_is_not_tracked(qapp, settings, monkeypatch):
+    fake_user32 = FakeUser32()
+    fake_user32.RegisterHotKey = lambda hwnd, hotkey_id, modifiers, vk: False
+    monkeypatch.setattr(manager_module, "user32", fake_user32)
+
+    hotkey_manager = HotkeyManager(settings)
+    hotkey_manager.start()
+
+    assert hotkey_manager._hotkey_ids == {}
+
+

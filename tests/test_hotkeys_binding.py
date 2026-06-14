@@ -1,10 +1,13 @@
 import pytest
 
 from sound_mixer.hotkeys.binding import (
+    MOD_ALT,
+    MOD_CONTROL,
+    MOD_WIN,
     HotkeyBinding,
+    combo_to_hotkey,
     normalize_combo,
     parse_combo,
-    to_keyboard_combo,
 )
 from sound_mixer.settings.schema import DEFAULT_HOTKEYS
 
@@ -43,12 +46,33 @@ def test_default_hotkeys_parse_successfully(hotkey):
         assert parse_combo(hotkey["combo"])
 
 
-def test_to_keyboard_combo_converts_numpad_digits():
-    assert to_keyboard_combo("ctrl+alt+num5") == "ctrl+alt+num 5"
+def test_combo_to_hotkey_converts_numpad_digit():
+    modifiers, vk = combo_to_hotkey("ctrl+alt+num5")
+    assert modifiers == MOD_CONTROL | MOD_ALT
+    assert vk == 0x65  # VK_NUMPAD5
 
 
-def test_to_keyboard_combo_converts_win_modifier():
-    assert to_keyboard_combo("win+s") == "windows+s"
+def test_combo_to_hotkey_converts_win_modifier_and_letter():
+    modifiers, vk = combo_to_hotkey("win+s")
+    assert modifiers == MOD_WIN
+    assert vk == ord("S")
+
+
+def test_combo_to_hotkey_requires_a_non_modifier_key():
+    with pytest.raises(ValueError):
+        combo_to_hotkey("ctrl+alt")
+
+
+def test_combo_to_hotkey_rejects_multiple_non_modifier_keys():
+    with pytest.raises(ValueError):
+        combo_to_hotkey("ctrl+a+b")
+
+
+@pytest.mark.parametrize("hotkey", DEFAULT_HOTKEYS)
+def test_default_hotkeys_convert_successfully(hotkey):
+    if not hotkey["combo"]:
+        pytest.skip("empty combo")
+    combo_to_hotkey(hotkey["combo"])
 
 
 def test_hotkey_binding_round_trip():

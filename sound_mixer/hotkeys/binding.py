@@ -62,15 +62,64 @@ def parse_combo(combo: str) -> list[str]:
     return tokens
 
 
-def to_keyboard_combo(combo: str) -> str:
+MOD_ALT = 0x0001
+MOD_CONTROL = 0x0002
+MOD_SHIFT = 0x0004
+MOD_WIN = 0x0008
+
+_MODIFIER_FLAGS = {
+    "alt": MOD_ALT,
+    "ctrl": MOD_CONTROL,
+    "shift": MOD_SHIFT,
+    "win": MOD_WIN,
+}
+
+_VK_CODES: dict[str, int] = {}
+_VK_CODES.update({str(d): 0x30 + d for d in range(10)})
+_VK_CODES.update({chr(ord("a") + i): 0x41 + i for i in range(26)})
+_VK_CODES.update({f"num{d}": 0x60 + d for d in range(10)})
+_VK_CODES.update({f"f{n}": 0x70 + (n - 1) for n in range(1, 25)})
+_VK_CODES.update(
+    {
+        "left": 0x25,
+        "up": 0x26,
+        "right": 0x27,
+        "down": 0x28,
+        "space": 0x20,
+        "enter": 0x0D,
+        "esc": 0x1B,
+        "tab": 0x09,
+        "backspace": 0x08,
+        "delete": 0x2E,
+        "insert": 0x2D,
+        "home": 0x24,
+        "end": 0x23,
+        "page up": 0x21,
+        "page down": 0x22,
+        "caps lock": 0x14,
+        "print screen": 0x2C,
+        "scroll lock": 0x91,
+        "pause": 0x13,
+        "num lock": 0x90,
+    }
+)
+
+
+def combo_to_hotkey(combo: str) -> tuple[int, int]:
+    """Convert a combo string to (modifiers, virtual_key_code) for RegisterHotKey."""
     tokens = parse_combo(combo)
 
-    keyboard_tokens = []
+    modifiers = 0
+    key_token = None
     for token in tokens:
-        if token in _NUMPAD_DIGITS:
-            keyboard_tokens.append(f"num {token[3:]}")
-        elif token == "win":
-            keyboard_tokens.append("windows")
+        if token in _MODIFIER_FLAGS:
+            modifiers |= _MODIFIER_FLAGS[token]
+        elif key_token is None:
+            key_token = token
         else:
-            keyboard_tokens.append(token)
-    return "+".join(keyboard_tokens)
+            raise ValueError(f"Combo has more than one non-modifier key: {combo}")
+
+    if key_token is None:
+        raise ValueError(f"Combo has no non-modifier key: {combo}")
+
+    return modifiers, _VK_CODES[key_token]
