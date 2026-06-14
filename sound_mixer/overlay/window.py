@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import QSize, Qt, QTimer, Signal
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QScrollArea, QVBoxLayout, QWidget
 
 from sound_mixer import __version__
@@ -10,11 +10,18 @@ from sound_mixer.settings.store import SettingsStore
 REFRESH_INTERVAL_MS = 1000
 GEOMETRY_SAVE_DELAY_MS = 300
 
-BACKGROUND_STYLE = """
-#background {
+BASE_FONT_PX = 13
+BASE_ICON_PX = 16
+
+
+def background_style(scale: float) -> str:
+    font_px = round(BASE_FONT_PX * scale)
+    return f"""
+#background {{
     background-color: rgba(32, 32, 32, 235);
     border-radius: 8px;
-}
+    font-size: {font_px}px;
+}}
 """
 
 
@@ -56,6 +63,7 @@ class OverlayWindow(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self._build_ui()
         self._restore_geometry()
+        self.apply_scale()
 
         self._geometry_save_timer = QTimer(self)
         self._geometry_save_timer.setSingleShot(True)
@@ -73,8 +81,8 @@ class OverlayWindow(QWidget):
 
         background = QFrame(self)
         background.setObjectName("background")
-        background.setStyleSheet(BACKGROUND_STYLE)
         outer_layout.addWidget(background)
+        self._background = background
 
         layout = QVBoxLayout(background)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -107,7 +115,7 @@ class OverlayWindow(QWidget):
         title_bar.setObjectName("titleBar")
 
         icon_label = QLabel(title_bar)
-        icon_label.setPixmap(load_icon("volume").pixmap(16, 16))
+        self._title_icon_label = icon_label
 
         name_label = QLabel("Sound Mixer", title_bar)
         version_label = QLabel(f"v{__version__}", title_bar)
@@ -117,6 +125,7 @@ class OverlayWindow(QWidget):
         close_button.setToolTip("Close")
         close_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         close_button.clicked.connect(self.close)
+        self._close_button = close_button
 
         layout = QHBoxLayout(title_bar)
         layout.addWidget(icon_label)
@@ -152,6 +161,17 @@ class OverlayWindow(QWidget):
     def refresh_view(self) -> None:
         self._sync_entry_widgets()
 
+    def apply_scale(self) -> None:
+        scale = self._settings.get_ui_scale()
+        self._background.setStyleSheet(background_style(scale))
+
+        icon_px = round(BASE_ICON_PX * scale)
+        self._title_icon_label.setPixmap(load_icon("volume").pixmap(icon_px, icon_px))
+        self._close_button.setIconSize(QSize(icon_px, icon_px))
+
+        for widget in self._entry_widgets:
+            widget.apply_scale(scale)
+
     def _sync_entry_widgets(self) -> None:
         entries = self._model.entries
 
@@ -161,6 +181,7 @@ class OverlayWindow(QWidget):
             widget.mute_toggled.connect(lambda w=widget: self._on_mute_toggled(w))
             widget.focus_requested.connect(lambda w=widget: self._on_focus_requested(w))
             widget.scrolled.connect(lambda direction, w=widget: self._on_scrolled(w, direction))
+            widget.apply_scale(self._settings.get_ui_scale())
             self._container_layout.insertWidget(len(self._entry_widgets), widget)
             self._entry_widgets.append(widget)
 

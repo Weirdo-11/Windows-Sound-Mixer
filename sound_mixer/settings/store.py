@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 from sound_mixer.settings.migrations import migrate
-from sound_mixer.settings.schema import DEFAULT_SETTINGS
+from sound_mixer.settings.schema import DEFAULT_SETTINGS, MAX_UI_SCALE, MIN_UI_SCALE
 from sound_mixer.volume import clamp_volume
 
 logger = logging.getLogger(__name__)
@@ -135,6 +135,13 @@ class SettingsStore:
 
     def set_scroll_step(self, step: float) -> None:
         self.data["volume_step"]["scroll"] = clamp_volume(step)
+        self.save()
+
+    def get_ui_scale(self) -> float:
+        return self.data["ui_scale"]
+
+    def set_ui_scale(self, scale: float) -> None:
+        self.data["ui_scale"] = max(MIN_UI_SCALE, min(MAX_UI_SCALE, scale))
         self.save()
 
 

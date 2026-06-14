@@ -60,6 +60,7 @@ is migrated automatically on load.
 | `overlay` | object | Overlay window state: `{ "x", "y", "width", "height" }` (pixels) and `"visible_on_start"` (bool). |
 | `tooltip_delay_ms` | integer | Delay, in milliseconds, before action button tooltips appear. |
 | `volume_step` | object | `{ "arrow": float, "scroll": float }` - volume change per arrow-key press and per scroll wheel notch. |
+| `ui_scale` | float (0.5-3.0) | Overlay interface scale factor (fonts, icons, sliders). 1.0 is 100%. |
 
 ### Hotkey actions
 

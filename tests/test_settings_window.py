@@ -8,6 +8,7 @@ def test_initial_field_values(qapp, settings):
     assert window._tooltip_delay_spinbox.value() == settings.get_tooltip_delay_ms()
     assert window._arrow_step_spinbox.value() == round(settings.get_arrow_step() * 100)
     assert window._scroll_step_spinbox.value() == round(settings.get_scroll_step() * 100)
+    assert window._ui_scale_spinbox.value() == round(settings.get_ui_scale() * 100)
 
     hotkeys = settings.get_hotkeys()
     assert len(window._hotkey_rows) == len(hotkeys)
@@ -24,12 +25,14 @@ def test_accept_saves_general_settings(qapp, settings):
     window._tooltip_delay_spinbox.setValue(1000)
     window._arrow_step_spinbox.setValue(10)
     window._scroll_step_spinbox.setValue(4)
+    window._ui_scale_spinbox.setValue(150)
     window.accept()
 
     assert settings.get_autostart_enabled() is True
     assert settings.get_tooltip_delay_ms() == 1000
     assert settings.get_arrow_step() == 0.1
     assert settings.get_scroll_step() == 0.04
+    assert settings.get_ui_scale() == 1.5
 
 
 def test_accept_saves_hotkeys(qapp, settings):

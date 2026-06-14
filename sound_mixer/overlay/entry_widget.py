@@ -1,8 +1,30 @@
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QSlider
 
 from sound_mixer.mixer.model import MixerEntry
 from sound_mixer.overlay.icons import DelayedTooltipButton, load_icon
+
+BASE_ICON_PX = 16
+BASE_SLIDER_HEIGHT_PX = 20
+
+
+def slider_style(scale: float) -> str:
+    groove_height = max(2, round(4 * scale))
+    handle_size = round(14 * scale)
+    return f"""
+QSlider::groove:horizontal {{
+    height: {groove_height}px;
+    background: #555555;
+    border-radius: {groove_height // 2}px;
+}}
+QSlider::handle:horizontal {{
+    width: {handle_size}px;
+    height: {handle_size}px;
+    margin: -{(handle_size - groove_height) // 2}px 0;
+    background: #cccccc;
+    border-radius: {handle_size // 2}px;
+}}
+"""
 
 
 class EntryWidget(QFrame):
@@ -31,6 +53,12 @@ class EntryWidget(QFrame):
         layout.addWidget(self._mute_button)
         layout.addWidget(self._label, 1)
         layout.addWidget(self._slider, 2)
+
+    def apply_scale(self, scale: float) -> None:
+        icon_px = round(BASE_ICON_PX * scale)
+        self._mute_button.setIconSize(QSize(icon_px, icon_px))
+        self._slider.setStyleSheet(slider_style(scale))
+        self._slider.setMinimumHeight(round(BASE_SLIDER_HEIGHT_PX * scale))
 
     def set_entry(self, entry: MixerEntry, focused: bool) -> None:
         self._label.setText(entry.display_name)

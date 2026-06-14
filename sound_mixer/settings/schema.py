@@ -1,5 +1,8 @@
 CURRENT_VERSION = 1
 
+MIN_UI_SCALE = 0.5
+MAX_UI_SCALE = 3.0
+
 DEFAULT_HOTKEYS = [
     {"action": "toggle_overlay", "combo": "ctrl+alt+num5", "enabled": True},
     {"action": "volume_up", "combo": "", "enabled": False},
@@ -28,4 +31,5 @@ DEFAULT_SETTINGS = {
         "arrow": 0.05,
         "scroll": 0.02,
     },
+    "ui_scale": 1.0,
 }

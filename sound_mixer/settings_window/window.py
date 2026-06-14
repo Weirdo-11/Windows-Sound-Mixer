@@ -17,6 +17,8 @@ from sound_mixer import __version__
 from sound_mixer.autostart.registry import AutostartManager, AutostartUnavailableError
 from sound_mixer.hotkeys.binding import normalize_combo, parse_combo
 from sound_mixer.hotkeys.manager import HotkeyManager
+from sound_mixer.overlay.window import OverlayWindow
+from sound_mixer.settings.schema import MAX_UI_SCALE, MIN_UI_SCALE
 from sound_mixer.settings.store import SettingsStore
 
 ACTION_LABELS = {
@@ -35,12 +37,14 @@ class SettingsWindow(QDialog):
         settings: SettingsStore,
         autostart: Optional[AutostartManager] = None,
         hotkeys: Optional[HotkeyManager] = None,
+        overlay: Optional[OverlayWindow] = None,
         parent: Optional[QWidget] = None,
     ) -> None:
         super().__init__(parent)
         self._settings = settings
         self._autostart = autostart
         self._hotkeys = hotkeys
+        self._overlay = overlay
         self._hotkey_rows: list[tuple[str, QLineEdit, QCheckBox]] = []
 
         self.setWindowTitle("Sound Mixer Settings")
@@ -89,6 +93,13 @@ class SettingsWindow(QDialog):
         self._scroll_step_spinbox.setSuffix(" %")
         self._scroll_step_spinbox.setValue(round(self._settings.get_scroll_step() * 100))
         form.addRow("Scroll volume step", self._scroll_step_spinbox)
+
+        self._ui_scale_spinbox = QSpinBox(tab)
+        self._ui_scale_spinbox.setRange(round(MIN_UI_SCALE * 100), round(MAX_UI_SCALE * 100))
+        self._ui_scale_spinbox.setSingleStep(10)
+        self._ui_scale_spinbox.setSuffix(" %")
+        self._ui_scale_spinbox.setValue(round(self._settings.get_ui_scale() * 100))
+        form.addRow("Interface scale", self._ui_scale_spinbox)
 
         return tab
 
@@ -144,9 +155,13 @@ class SettingsWindow(QDialog):
         self._settings.set_tooltip_delay_ms(self._tooltip_delay_spinbox.value())
         self._settings.set_arrow_step(self._arrow_step_spinbox.value() / 100)
         self._settings.set_scroll_step(self._scroll_step_spinbox.value() / 100)
+        self._settings.set_ui_scale(self._ui_scale_spinbox.value() / 100)
 
         for action, combo, enabled in hotkey_updates:
             self._settings.set_hotkey(action, combo, enabled)
+
+        if self._overlay is not None:
+            self._overlay.apply_scale()
 
         if self._autostart is not None:
             try:

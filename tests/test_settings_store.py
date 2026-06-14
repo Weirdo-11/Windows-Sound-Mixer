@@ -88,3 +88,38 @@ def test_unknown_hotkey_action_raises(tmp_path):
 
     with pytest.raises(ValueError):
         store.set_hotkey("does_not_exist", "ctrl+x")
+
+
+def test_ui_scale_default_and_round_trip(tmp_path):
+    store = SettingsStore(tmp_path / "settings.json")
+    store.load()
+
+    assert store.get_ui_scale() == DEFAULT_SETTINGS["ui_scale"]
+
+    store.set_ui_scale(1.5)
+    assert store.get_ui_scale() == 1.5
+
+    reloaded = SettingsStore(tmp_path / "settings.json")
+    reloaded.load()
+    assert reloaded.get_ui_scale() == 1.5
+
+
+def test_ui_scale_clamps_to_valid_range(tmp_path):
+    store = SettingsStore(tmp_path / "settings.json")
+    store.load()
+
+    store.set_ui_scale(10.0)
+    assert store.get_ui_scale() == 3.0
+
+    store.set_ui_scale(0.0)
+    assert store.get_ui_scale() == 0.5
+
+
+def test_partial_file_fills_in_ui_scale(tmp_path):
+    path = tmp_path / "settings.json"
+    path.write_text(json.dumps({"version": 1, "master_volume": 0.4}), encoding="utf-8")
+
+    store = SettingsStore(path)
+    data = store.load()
+
+    assert data["ui_scale"] == DEFAULT_SETTINGS["ui_scale"]
