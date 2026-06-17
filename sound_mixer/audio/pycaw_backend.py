@@ -42,9 +42,13 @@ class PycawAudioBackend:
         self.refresh()
 
     def refresh(self) -> None:
+        try:
+            sessions = AudioUtilities.GetAllSessions()
+        except Exception:
+            return
         grouped: dict[str, list] = {}
         icon_paths: dict[str, str] = {}
-        for session in AudioUtilities.GetAllSessions():
+        for session in sessions:
             process = session.Process
             if process is None:
                 continue
@@ -69,16 +73,28 @@ class PycawAudioBackend:
         return list(self._sessions)
 
     def get_master_volume(self) -> float:
-        return self._endpoint_volume().GetMasterVolumeLevelScalar()
+        try:
+            return self._endpoint_volume().GetMasterVolumeLevelScalar()
+        except Exception:
+            return 1.0
 
     def set_master_volume(self, level: float) -> None:
-        self._endpoint_volume().SetMasterVolumeLevelScalar(clamp_volume(level), None)
+        try:
+            self._endpoint_volume().SetMasterVolumeLevelScalar(clamp_volume(level), None)
+        except Exception:
+            pass
 
     def get_master_mute(self) -> bool:
-        return bool(self._endpoint_volume().GetMute())
+        try:
+            return bool(self._endpoint_volume().GetMute())
+        except Exception:
+            return False
 
     def set_master_mute(self, muted: bool) -> None:
-        self._endpoint_volume().SetMute(bool(muted), None)
+        try:
+            self._endpoint_volume().SetMute(bool(muted), None)
+        except Exception:
+            pass
 
     def _endpoint_volume(self):
         return AudioUtilities.GetSpeakers().EndpointVolume

@@ -205,7 +205,6 @@ class OverlayWindow(QWidget):
 
         self._refresh_timer = QTimer(self)
         self._refresh_timer.timeout.connect(self._refresh)
-        self._refresh_timer.start(REFRESH_INTERVAL_MS)
 
         self._sync_entry_widgets()
 
@@ -291,10 +290,13 @@ class OverlayWindow(QWidget):
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
+        self._refresh()
+        self._refresh_timer.start(REFRESH_INTERVAL_MS)
         self.visibility_changed.emit(True)
 
     def hideEvent(self, event) -> None:
         super().hideEvent(event)
+        self._refresh_timer.stop()
         self.visibility_changed.emit(False)
 
     def _build_title_bar(self, parent: QWidget) -> QWidget:
@@ -394,7 +396,10 @@ class OverlayWindow(QWidget):
         self.setFixedHeight(title_bar_height + container_height)
 
     def _refresh(self) -> None:
-        self._model.refresh()
+        try:
+            self._model.refresh()
+        except Exception:
+            return
         self._sync_entry_widgets()
 
     def _pause_refresh(self) -> None:
