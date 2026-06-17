@@ -37,3 +37,28 @@ def test_current_version_unchanged():
     migrated = migrate(current)
 
     assert migrated == current
+
+
+def test_migrates_v1_to_v2_adds_ignored_apps():
+    v1 = {
+        "version": 1,
+        "master_volume": 0.5,
+        "app_volumes": {"chrome.exe": {"volume": 0.8, "muted": False}},
+    }
+
+    migrated = migrate(v1)
+
+    assert migrated["version"] == CURRENT_VERSION
+    assert migrated["ignored_apps"] == []
+    assert migrated["app_volumes"] == {"chrome.exe": {"volume": 0.8, "muted": False}}
+
+
+def test_migrates_v1_preserves_existing_ignored_apps():
+    v1 = {
+        "version": 1,
+        "ignored_apps": ["discord.exe"],
+    }
+
+    migrated = migrate(v1)
+
+    assert migrated["ignored_apps"] == ["discord.exe"]

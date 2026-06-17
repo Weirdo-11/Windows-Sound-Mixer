@@ -15,8 +15,16 @@ def _migrate_0_to_1(data: dict) -> dict:
     return data
 
 
+def _migrate_1_to_2(data: dict) -> dict:
+    data = dict(data)
+    data.setdefault("ignored_apps", [])
+    data["version"] = 2
+    return data
+
+
 MIGRATIONS = {
     0: _migrate_0_to_1,
+    1: _migrate_1_to_2,
 }
 
 

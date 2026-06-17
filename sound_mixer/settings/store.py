@@ -159,6 +159,24 @@ class SettingsStore:
         self.data["transparency_enabled"] = bool(enabled)
         self.save()
 
+    def get_ignored_apps(self) -> list[str]:
+        return self.data["ignored_apps"]
+
+    def is_app_ignored(self, exe: str) -> bool:
+        return exe.lower() in self.data["ignored_apps"]
+
+    def add_ignored_app(self, exe: str) -> None:
+        exe = exe.lower()
+        if exe not in self.data["ignored_apps"]:
+            self.data["ignored_apps"].append(exe)
+            self.save()
+
+    def remove_ignored_app(self, exe: str) -> None:
+        exe = exe.lower()
+        if exe in self.data["ignored_apps"]:
+            self.data["ignored_apps"].remove(exe)
+            self.save()
+
 
 def _merge_defaults(data: dict, defaults: dict) -> dict:
     result = copy.deepcopy(defaults)

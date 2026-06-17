@@ -19,6 +19,7 @@ BASE_ICON_PX = 16
 BASE_TITLE_LOGO_PX = 28
 BASE_TITLE_FONT_PX = 17
 BASE_VERSION_FONT_PX = 11
+BASE_DIVIDER_MARGIN_PX = 4
 
 MIN_OVERLAY_WIDTH = 200
 RESIZE_HANDLE_WIDTH_PX = 6
@@ -105,6 +106,19 @@ def background_style(scale: float, accent_color: str, transparent: bool = True) 
 #background QScrollBar::add-page:vertical, #background QScrollBar::sub-page:vertical {{
     background: none;
 }}
+#background #ignoredDivider {{
+    color: rgba(255, 255, 255, 40);
+}}
+#background #expandButton, #background #collapseButton {{
+    background: rgba(255, 255, 255, 8);
+    border: none;
+    border-radius: {control_radius}px;
+    padding: {round(4 * scale)}px;
+    width: 100%;
+}}
+#background #expandButton:hover, #background #collapseButton:hover {{
+    background: rgba(255, 255, 255, 18);
+}}
 """
 
 
@@ -168,6 +182,8 @@ class OverlayWindow(QWidget):
         self._model = model
         self._settings = settings
         self._entry_widgets: list[EntryWidget] = []
+        self._ignored_widgets: list[EntryWidget] = []
+        self._ignored_expanded = False
 
         self.setWindowTitle("Sound Mixer")
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
@@ -217,14 +233,55 @@ class OverlayWindow(QWidget):
         title_bar = self._build_title_bar(background)
         layout.addWidget(title_bar)
 
-        self._container = QWidget(background)
-        self._container.setObjectName("entryContainer")
-        self._container_layout = QVBoxLayout(self._container)
+        self._active_container = QWidget()
+        self._active_container.setObjectName("entryContainer")
+        self._active_layout = QVBoxLayout(self._active_container)
+        self._active_layout.setContentsMargins(0, 0, 0, 0)
+        self._active_layout.setSpacing(0)
+
+        self._expand_button = DelayedTooltipButton()
+        self._expand_button.setObjectName("expandButton")
+        self._expand_button.setIcon(load_icon("dropdown_arrow"))
+        self._expand_button.setToolTip("Show ignored")
+        self._expand_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self._expand_button.clicked.connect(self._on_expand_ignored)
+        self._expand_button.hide()
+
+        self._divider = QFrame()
+        self._divider.setObjectName("ignoredDivider")
+        self._divider.setFrameShape(QFrame.Shape.HLine)
+        self._divider.hide()
+
+        self._ignored_container = QWidget()
+        self._ignored_container.setObjectName("entryContainer")
+        self._ignored_layout = QVBoxLayout(self._ignored_container)
+        self._ignored_layout.setContentsMargins(0, 0, 0, 0)
+        self._ignored_layout.setSpacing(0)
+        self._ignored_container.hide()
+
+        self._collapse_button = DelayedTooltipButton()
+        self._collapse_button.setObjectName("collapseButton")
+        self._collapse_button.setIcon(load_icon("arrow_up"))
+        self._collapse_button.setToolTip("Hide ignored")
+        self._collapse_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self._collapse_button.clicked.connect(self._on_collapse_ignored)
+        self._collapse_button.hide()
+
+        scroll_container = QWidget()
+        scroll_container.setObjectName("entryContainer")
+        self._container_layout = QVBoxLayout(scroll_container)
+        self._container_layout.setContentsMargins(0, 0, 0, 0)
+        self._container_layout.setSpacing(0)
+        self._container_layout.addWidget(self._active_container)
+        self._container_layout.addWidget(self._expand_button)
+        self._container_layout.addWidget(self._divider)
+        self._container_layout.addWidget(self._ignored_container)
+        self._container_layout.addWidget(self._collapse_button)
         self._container_layout.addStretch(1)
 
         scroll_area = QScrollArea(background)
         scroll_area.setWidgetResizable(True)
-        scroll_area.setWidget(self._container)
+        scroll_area.setWidget(scroll_container)
         scroll_area.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         scroll_area.setFrameShape(QFrame.Shape.NoFrame)
         layout.addWidget(scroll_area)
@@ -306,16 +363,33 @@ class OverlayWindow(QWidget):
         super().resizeEvent(event)
 
     def _update_window_height(self) -> None:
-        if not self._entry_widgets:
+        all_ref_widgets = self._entry_widgets or self._ignored_widgets
+        if not all_ref_widgets:
             return
 
-        entry_height = max(widget.sizeHint().height() for widget in self._entry_widgets)
+        entry_height = max(w.sizeHint().height() for w in all_ref_widgets)
+        spacing = self._container_layout.spacing()
         margins = self._container_layout.contentsMargins()
-        visible_count = min(len(self._entry_widgets), MAX_VISIBLE_ENTRIES)
-        container_height = (
-            margins.top() + margins.bottom() + visible_count * entry_height
-            + max(0, visible_count - 1) * self._container_layout.spacing()
-        )
+
+        active_count = len(self._entry_widgets)
+        ignored_visible = len(self._ignored_widgets) if self._ignored_expanded else 0
+        total_entries = min(active_count + ignored_visible, MAX_VISIBLE_ENTRIES)
+
+        entries_height = total_entries * entry_height + max(0, total_entries - 1) * spacing
+
+        extra_height = 0
+        has_ignored = bool(self._ignored_widgets)
+        if has_ignored and not self._ignored_expanded:
+            btn_h = self._expand_button.sizeHint().height()
+            extra_height += spacing + (btn_h if btn_h > 0 else round(28 * self._settings.get_ui_scale()))
+        elif has_ignored and self._ignored_expanded:
+            div_h = self._divider.sizeHint().height()
+            btn_h = self._collapse_button.sizeHint().height()
+            if div_h > 0:
+                extra_height += spacing + div_h
+            extra_height += spacing + (btn_h if btn_h > 0 else round(28 * self._settings.get_ui_scale()))
+
+        container_height = margins.top() + margins.bottom() + entries_height + extra_height
         title_bar_height = self._title_bar.sizeHint().height()
         self.setFixedHeight(title_bar_height + container_height)
 
@@ -342,6 +416,8 @@ class OverlayWindow(QWidget):
         self._title_icon_label.setPixmap(load_icon("logo").pixmap(logo_px, logo_px))
         self._settings_button.setIconSize(QSize(icon_px, icon_px))
         self._close_button.setIconSize(QSize(icon_px, icon_px))
+        self._expand_button.setIconSize(QSize(icon_px, icon_px))
+        self._collapse_button.setIconSize(QSize(icon_px, icon_px))
 
         title_bar_layout = self._title_bar.layout()
         margin = round(12 * scale)
@@ -352,32 +428,69 @@ class OverlayWindow(QWidget):
         container_margin = round(8 * scale)
         self._container_layout.setContentsMargins(container_margin, container_margin, container_margin, container_margin)
         self._container_layout.setSpacing(container_margin)
+        self._active_layout.setContentsMargins(0, 0, 0, 0)
+        self._active_layout.setSpacing(container_margin)
+        self._ignored_layout.setContentsMargins(0, 0, 0, 0)
+        self._ignored_layout.setSpacing(container_margin)
 
-        for widget in self._entry_widgets:
+        for widget in self._entry_widgets + self._ignored_widgets:
             widget.apply_scale(scale)
 
         self._update_window_height()
 
+    def _make_active_widget(self) -> EntryWidget:
+        widget = EntryWidget(self._active_container)
+        widget.volume_changed.connect(lambda value, w=widget: self._on_volume_changed(w, value))
+        widget.mute_toggled.connect(lambda w=widget: self._on_mute_toggled(w))
+        widget.focus_requested.connect(lambda w=widget: self._on_focus_requested(w))
+        widget.scrolled.connect(lambda direction, w=widget: self._on_scrolled(w, direction))
+        widget.ignore_requested.connect(lambda w=widget: self._on_ignore_requested(w))
+        widget.apply_scale(self._settings.get_ui_scale())
+        return widget
+
+    def _make_ignored_widget(self) -> EntryWidget:
+        widget = EntryWidget(self._ignored_container)
+        widget.set_ignore_tooltip("Restore")
+        widget.volume_changed.connect(lambda value, w=widget: self._on_ignored_volume_changed(w, value))
+        widget.mute_toggled.connect(lambda w=widget: self._on_ignored_mute_toggled(w))
+        widget.scrolled.connect(lambda direction, w=widget: self._on_ignored_scrolled(w, direction))
+        widget.ignore_requested.connect(lambda w=widget: self._on_unignore_requested(w))
+        widget.apply_scale(self._settings.get_ui_scale())
+        return widget
+
     def _sync_entry_widgets(self) -> None:
-        entries = self._model.entries
+        active_entries = self._model.entries
+        ignored_entries = self._model.ignored_entries
 
-        while len(self._entry_widgets) < len(entries):
-            widget = EntryWidget(self._container)
-            widget.volume_changed.connect(lambda value, w=widget: self._on_volume_changed(w, value))
-            widget.mute_toggled.connect(lambda w=widget: self._on_mute_toggled(w))
-            widget.focus_requested.connect(lambda w=widget: self._on_focus_requested(w))
-            widget.scrolled.connect(lambda direction, w=widget: self._on_scrolled(w, direction))
-            widget.apply_scale(self._settings.get_ui_scale())
-            self._container_layout.insertWidget(len(self._entry_widgets), widget)
+        while len(self._entry_widgets) < len(active_entries):
+            widget = self._make_active_widget()
+            self._active_layout.addWidget(widget)
             self._entry_widgets.append(widget)
-
-        while len(self._entry_widgets) > len(entries):
+        while len(self._entry_widgets) > len(active_entries):
             widget = self._entry_widgets.pop()
-            self._container_layout.removeWidget(widget)
+            self._active_layout.removeWidget(widget)
             widget.deleteLater()
 
-        for index, (entry, widget) in enumerate(zip(entries, self._entry_widgets)):
+        while len(self._ignored_widgets) < len(ignored_entries):
+            widget = self._make_ignored_widget()
+            self._ignored_layout.addWidget(widget)
+            self._ignored_widgets.append(widget)
+        while len(self._ignored_widgets) > len(ignored_entries):
+            widget = self._ignored_widgets.pop()
+            self._ignored_layout.removeWidget(widget)
+            widget.deleteLater()
+
+        for index, (entry, widget) in enumerate(zip(active_entries, self._entry_widgets)):
             widget.set_entry(entry, focused=(index == self._model.focused_index))
+
+        for entry, widget in zip(ignored_entries, self._ignored_widgets):
+            widget.set_entry(entry, focused=False)
+
+        has_ignored = bool(self._ignored_widgets)
+        self._expand_button.setVisible(has_ignored and not self._ignored_expanded)
+        self._divider.setVisible(has_ignored and self._ignored_expanded)
+        self._ignored_container.setVisible(has_ignored and self._ignored_expanded)
+        self._collapse_button.setVisible(has_ignored and self._ignored_expanded)
 
         self._update_window_height()
 
@@ -402,6 +515,44 @@ class OverlayWindow(QWidget):
         index = self._entry_widgets.index(widget)
         self._model.focused_index = index
         self._model.adjust_volume(direction * self._settings.get_scroll_step(), index)
+        self._sync_entry_widgets()
+
+    def _on_ignore_requested(self, widget: EntryWidget) -> None:
+        index = self._entry_widgets.index(widget)
+        key = self._model.entries[index].key
+        self._model.ignore_app(key)
+        self._sync_entry_widgets()
+
+    def _on_ignored_volume_changed(self, widget: EntryWidget, value: float) -> None:
+        index = self._ignored_widgets.index(widget)
+        key = self._model.ignored_entries[index].key
+        self._model.set_ignored_volume(key, value)
+        self._sync_entry_widgets()
+
+    def _on_ignored_mute_toggled(self, widget: EntryWidget) -> None:
+        index = self._ignored_widgets.index(widget)
+        key = self._model.ignored_entries[index].key
+        self._model.toggle_ignored_mute(key)
+        self._sync_entry_widgets()
+
+    def _on_ignored_scrolled(self, widget: EntryWidget, direction: int) -> None:
+        index = self._ignored_widgets.index(widget)
+        key = self._model.ignored_entries[index].key
+        self._model.adjust_ignored_volume(key, direction * self._settings.get_scroll_step())
+        self._sync_entry_widgets()
+
+    def _on_unignore_requested(self, widget: EntryWidget) -> None:
+        index = self._ignored_widgets.index(widget)
+        key = self._model.ignored_entries[index].key
+        self._model.unignore_app(key)
+        self._sync_entry_widgets()
+
+    def _on_expand_ignored(self) -> None:
+        self._ignored_expanded = True
+        self._sync_entry_widgets()
+
+    def _on_collapse_ignored(self) -> None:
+        self._ignored_expanded = False
         self._sync_entry_widgets()
 
     def keyPressEvent(self, event) -> None:

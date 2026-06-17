@@ -25,6 +25,7 @@ class MixerModel:
         self._settings = settings
         self._seen_exes: set[str] = set()
         self.entries: list[MixerEntry] = []
+        self.ignored_entries: list[MixerEntry] = []
         self.focused_index = 0
         self.refresh()
 
@@ -40,6 +41,7 @@ class MixerModel:
         )
 
         app_entries: list[MixerEntry] = []
+        ignored_entries: list[MixerEntry] = []
         for session in self._backend.enumerate_sessions():
             exe = session.process_name.lower()
             if exe not in self._seen_exes:
@@ -47,21 +49,25 @@ class MixerModel:
                 session.set_volume(self._settings.get_app_volume(exe))
                 session.set_muted(self._settings.get_app_muted(exe))
 
-            app_entries.append(
-                MixerEntry(
-                    key=exe,
-                    display_name=session.display_name,
-                    volume=session.volume,
-                    muted=session.muted,
-                    icon_path=session.icon_path,
-                )
+            entry = MixerEntry(
+                key=exe,
+                display_name=session.display_name,
+                volume=session.volume,
+                muted=session.muted,
+                icon_path=session.icon_path,
             )
+
+            if self._settings.is_app_ignored(exe):
+                ignored_entries.append(entry)
+            else:
+                app_entries.append(entry)
 
         focused_key = None
         if self.entries and 0 <= self.focused_index < len(self.entries):
             focused_key = self.entries[self.focused_index].key
 
         self.entries = [master_entry, *app_entries]
+        self.ignored_entries = ignored_entries
 
         if focused_key is not None:
             for index, entry in enumerate(self.entries):
@@ -115,6 +121,40 @@ class MixerModel:
             self._settings.set_app_muted(entry.key, muted)
 
         return muted
+
+    def ignore_app(self, key: str) -> None:
+        self._settings.add_ignored_app(key)
+        self.refresh()
+
+    def unignore_app(self, key: str) -> None:
+        self._settings.remove_ignored_app(key)
+        self.refresh()
+
+    def set_ignored_volume(self, key: str, level: float) -> float:
+        for entry in self.ignored_entries:
+            if entry.key == key:
+                level = clamp_volume(level)
+                entry.volume = level
+                self._set_session_volume(key, level)
+                self._settings.set_app_volume(key, level)
+                return level
+        return level
+
+    def adjust_ignored_volume(self, key: str, delta: float) -> float:
+        for entry in self.ignored_entries:
+            if entry.key == key:
+                return self.set_ignored_volume(key, entry.volume + delta)
+        return 0.0
+
+    def toggle_ignored_mute(self, key: str) -> bool:
+        for entry in self.ignored_entries:
+            if entry.key == key:
+                muted = not entry.muted
+                entry.muted = muted
+                self._set_session_muted(key, muted)
+                self._settings.set_app_muted(key, muted)
+                return muted
+        return False
 
     def _set_session_volume(self, exe: str, level: float) -> None:
         for session in self._backend.enumerate_sessions():

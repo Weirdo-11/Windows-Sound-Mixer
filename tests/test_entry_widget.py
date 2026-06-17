@@ -161,3 +161,66 @@ def test_slider_handle_stays_round_at_every_scale(scale_percent):
     # The handle is centered over the groove with a negative margin; if the
     # difference is odd, Qt renders the handle as a square instead of a circle.
     assert (handle_size - groove_height) % 2 == 0
+
+
+def test_hide_button_hidden_by_default(qapp):
+    widget = EntryWidget()
+    widget.set_entry(make_entry(), focused=False)
+
+    assert widget._hide_button.isHidden()
+
+
+def test_hide_button_visible_when_focused(qapp):
+    widget = EntryWidget()
+    widget.set_entry(make_entry(), focused=True)
+
+    assert not widget._hide_button.isHidden()
+
+
+def test_hide_button_hidden_when_unfocused(qapp):
+    widget = EntryWidget()
+    widget.set_entry(make_entry(), focused=True)
+    widget.set_entry(make_entry(), focused=False)
+
+    assert widget._hide_button.isHidden()
+
+
+def test_hide_button_emits_ignore_requested(qapp):
+    widget = EntryWidget()
+    widget.set_entry(make_entry(), focused=True)
+
+    received = []
+    widget.ignore_requested.connect(lambda: received.append(True))
+    focus_requests = []
+    widget.focus_requested.connect(lambda: focus_requests.append(True))
+
+    widget._hide_button.click()
+
+    assert received == [True]
+    assert focus_requests == [True]
+
+
+def test_set_ignore_tooltip_changes_button_tooltip(qapp):
+    widget = EntryWidget()
+
+    widget.set_ignore_tooltip("Restore")
+
+    assert widget._hide_button.toolTip() == "Restore"
+
+
+def test_hide_button_default_tooltip_is_ignore(qapp):
+    widget = EntryWidget()
+
+    assert widget._hide_button.toolTip() == "Ignore"
+
+
+def test_apply_scale_resizes_hide_button_icon(qapp):
+    from sound_mixer.overlay.entry_widget import BASE_ICON_PX
+
+    widget = EntryWidget()
+
+    widget.apply_scale(2.0)
+
+    expected = round(BASE_ICON_PX * 2.0)
+    assert widget._hide_button.iconSize().width() == expected
+    assert widget._hide_button.iconSize().height() == expected

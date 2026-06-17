@@ -170,3 +170,69 @@ def test_transparency_enabled_defaults_to_true_and_persists(tmp_path):
     reloaded = SettingsStore(tmp_path / "settings.json")
     reloaded.load()
     assert reloaded.get_transparency_enabled() is False
+
+
+def test_ignored_apps_default_empty(tmp_path):
+    store = SettingsStore(tmp_path / "settings.json")
+    store.load()
+
+    assert store.get_ignored_apps() == []
+    assert store.is_app_ignored("discord.exe") is False
+
+
+def test_add_ignored_app_persists(tmp_path):
+    path = tmp_path / "settings.json"
+    store = SettingsStore(path)
+    store.load()
+
+    store.add_ignored_app("discord.exe")
+
+    assert store.is_app_ignored("discord.exe") is True
+
+    reloaded = SettingsStore(path)
+    reloaded.load()
+    assert reloaded.is_app_ignored("discord.exe") is True
+
+
+def test_add_ignored_app_normalises_case(tmp_path):
+    store = SettingsStore(tmp_path / "settings.json")
+    store.load()
+
+    store.add_ignored_app("Discord.EXE")
+
+    assert store.is_app_ignored("discord.exe") is True
+    assert "discord.exe" in store.get_ignored_apps()
+
+
+def test_add_ignored_app_idempotent(tmp_path):
+    store = SettingsStore(tmp_path / "settings.json")
+    store.load()
+
+    store.add_ignored_app("discord.exe")
+    store.add_ignored_app("discord.exe")
+
+    assert store.get_ignored_apps().count("discord.exe") == 1
+
+
+def test_remove_ignored_app(tmp_path):
+    path = tmp_path / "settings.json"
+    store = SettingsStore(path)
+    store.load()
+
+    store.add_ignored_app("discord.exe")
+    store.remove_ignored_app("discord.exe")
+
+    assert store.is_app_ignored("discord.exe") is False
+
+    reloaded = SettingsStore(path)
+    reloaded.load()
+    assert reloaded.is_app_ignored("discord.exe") is False
+
+
+def test_remove_ignored_app_not_present_is_noop(tmp_path):
+    store = SettingsStore(tmp_path / "settings.json")
+    store.load()
+
+    store.remove_ignored_app("notpresent.exe")
+
+    assert store.get_ignored_apps() == []

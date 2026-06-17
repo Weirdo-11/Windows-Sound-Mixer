@@ -43,6 +43,7 @@ class EntryWidget(QFrame):
     mute_toggled = Signal()
     focus_requested = Signal()
     scrolled = Signal(int)
+    ignore_requested = Signal()
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -70,6 +71,13 @@ class EntryWidget(QFrame):
         self._volume_spinbox.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
         self._volume_spinbox.valueChanged.connect(self._on_spinbox_changed)
 
+        self._hide_button = DelayedTooltipButton(self)
+        self._hide_button.setIcon(load_icon("hide"))
+        self._hide_button.setToolTip("Ignore")
+        self._hide_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self._hide_button.clicked.connect(self._on_hide_clicked)
+        self._hide_button.hide()
+
         self._slider.installEventFilter(self)
         self._volume_spinbox.installEventFilter(self)
 
@@ -78,10 +86,12 @@ class EntryWidget(QFrame):
         layout.addWidget(self._mute_button)
         layout.addWidget(self._volume_spinbox)
         layout.addWidget(self._slider, 1)
+        layout.addWidget(self._hide_button)
 
     def apply_scale(self, scale: float) -> None:
         icon_px = round(BASE_ICON_PX * scale)
         self._mute_button.setIconSize(QSize(icon_px, icon_px))
+        self._hide_button.setIconSize(QSize(icon_px, icon_px))
         self._slider.setStyleSheet(slider_style(scale))
         self._slider.setMinimumHeight(round(BASE_SLIDER_HEIGHT_PX * scale))
 
@@ -124,6 +134,14 @@ class EntryWidget(QFrame):
         self.style().unpolish(self)
         self.style().polish(self)
 
+        if focused or self.underMouse():
+            self._hide_button.show()
+        else:
+            self._hide_button.hide()
+
+    def set_ignore_tooltip(self, text: str) -> None:
+        self._hide_button.setToolTip(text)
+
     def _on_slider_changed(self, value: int) -> None:
         self.focus_requested.emit()
         self.volume_changed.emit(value / 100)
@@ -136,9 +154,22 @@ class EntryWidget(QFrame):
         self.focus_requested.emit()
         self.mute_toggled.emit()
 
+    def _on_hide_clicked(self) -> None:
+        self.focus_requested.emit()
+        self.ignore_requested.emit()
+
     def mousePressEvent(self, event) -> None:
         self.focus_requested.emit()
         super().mousePressEvent(event)
+
+    def enterEvent(self, event) -> None:
+        self._hide_button.show()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event) -> None:
+        if not self.property("focused"):
+            self._hide_button.hide()
+        super().leaveEvent(event)
 
     def wheelEvent(self, event) -> None:
         self.focus_requested.emit()
