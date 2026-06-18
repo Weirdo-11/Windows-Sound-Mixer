@@ -1,6 +1,6 @@
 from PySide6.QtCore import QEvent, QSize, Qt, Signal
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QAbstractSpinBox, QFrame, QHBoxLayout, QLabel, QSlider, QSpinBox
+from PySide6.QtWidgets import QAbstractSpinBox, QFrame, QHBoxLayout, QLabel, QSlider, QSpinBox, QWidget
 
 from sound_mixer.mixer.model import MixerEntry
 from sound_mixer.overlay.icons import DelayedTooltipButton, load_app_icon, load_icon
@@ -56,9 +56,21 @@ class EntryWidget(QFrame):
         self._mute_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self._mute_button.clicked.connect(self._on_mute_clicked)
 
-        self._icon_label = QLabel(self)
-        self._icon_label.setFixedSize(self._app_icon_px, self._app_icon_px)
+        self._icon_container = QWidget(self)
+        self._icon_container.setFixedSize(self._app_icon_px, self._app_icon_px)
+
+        self._icon_label = QLabel(self._icon_container)
+        self._icon_label.setGeometry(0, 0, self._app_icon_px, self._app_icon_px)
         self._icon_label.setScaledContents(True)
+
+        self._hide_button = DelayedTooltipButton(self._icon_container)
+        self._hide_button.setIcon(load_icon("hide"))
+        self._hide_button.setToolTip("Ignore")
+        self._hide_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self._hide_button.clicked.connect(self._on_hide_clicked)
+        self._hide_button.setGeometry(0, 0, self._app_icon_px, self._app_icon_px)
+        self._hide_button.raise_()
+        self._hide_button.hide()
 
         self._slider = QSlider(Qt.Orientation.Horizontal, self)
         self._slider.setRange(0, 100)
@@ -71,22 +83,14 @@ class EntryWidget(QFrame):
         self._volume_spinbox.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
         self._volume_spinbox.valueChanged.connect(self._on_spinbox_changed)
 
-        self._hide_button = DelayedTooltipButton(self)
-        self._hide_button.setIcon(load_icon("hide"))
-        self._hide_button.setToolTip("Ignore")
-        self._hide_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self._hide_button.clicked.connect(self._on_hide_clicked)
-        self._hide_button.hide()
-
         self._slider.installEventFilter(self)
         self._volume_spinbox.installEventFilter(self)
 
         layout = QHBoxLayout(self)
-        layout.addWidget(self._icon_label)
+        layout.addWidget(self._icon_container)
         layout.addWidget(self._mute_button)
         layout.addWidget(self._volume_spinbox)
         layout.addWidget(self._slider, 1)
-        layout.addWidget(self._hide_button)
 
     def apply_scale(self, scale: float) -> None:
         icon_px = round(BASE_ICON_PX * scale)
@@ -101,7 +105,9 @@ class EntryWidget(QFrame):
         self._volume_spinbox.setFixedWidth(self._volume_spinbox.minimumSizeHint().width())
 
         self._app_icon_px = round(BASE_APP_ICON_PX * scale)
-        self._icon_label.setFixedSize(self._app_icon_px, self._app_icon_px)
+        self._icon_container.setFixedSize(self._app_icon_px, self._app_icon_px)
+        self._icon_label.setGeometry(0, 0, self._app_icon_px, self._app_icon_px)
+        self._hide_button.setGeometry(0, 0, self._app_icon_px, self._app_icon_px)
         self._update_icon_pixmap()
 
         layout = self.layout()
@@ -113,12 +119,12 @@ class EntryWidget(QFrame):
         self._mute_button.setIcon(load_icon("muted" if entry.muted else "volume"))
 
         if entry.is_master:
-            self._icon_label.hide()
+            self._icon_container.hide()
         else:
             self._icon_label.setToolTip(entry.display_name)
             self._current_icon = load_app_icon(entry.icon_path)
             self._update_icon_pixmap()
-            self._icon_label.show()
+            self._icon_container.show()
 
         value = round(entry.volume * 100)
 
@@ -134,7 +140,7 @@ class EntryWidget(QFrame):
         self.style().unpolish(self)
         self.style().polish(self)
 
-        if focused or self.underMouse():
+        if self.underMouse():
             self._hide_button.show()
         else:
             self._hide_button.hide()
@@ -167,8 +173,7 @@ class EntryWidget(QFrame):
         super().enterEvent(event)
 
     def leaveEvent(self, event) -> None:
-        if not self.property("focused"):
-            self._hide_button.hide()
+        self._hide_button.hide()
         super().leaveEvent(event)
 
     def wheelEvent(self, event) -> None:
