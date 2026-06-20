@@ -67,6 +67,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
 
       - uses: actions/setup-python@v6
         with:
@@ -102,6 +103,23 @@ jobs:
           name: win-build-x64
           path: win-build-x64/SoundMixer.exe
 
+      - name: Generate release notes
+        shell: bash
+        run: |
+          prev_tag=$(git describe --tags --abbrev=0 HEAD 2>/dev/null || echo "")
+          if [ -n "$prev_tag" ]; then
+            commits=$(git log "${prev_tag}..HEAD" --pretty=format:"- %s" --no-merges)
+          else
+            commits=$(git log --pretty=format:"- %s" --no-merges)
+          fi
+          {
+            echo "## Changes"
+            echo ""
+            echo "$commits"
+            echo ""
+            echo "Commit: ${{ needs.prepare.outputs.short_sha }}"
+          } > release_notes.md
+
       - name: Create and push tag
         shell: bash
         run: |
@@ -116,4 +134,4 @@ jobs:
           gh release create "${{ steps.tag.outputs.tag }}" \
             win-build-x64/SoundMixer.exe \
             --title "${{ steps.tag.outputs.tag }}" \
-            --notes "Automated build of commit ${{ needs.prepare.outputs.short_sha }}"
+            --notes-file release_notes.md
