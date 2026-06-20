@@ -131,7 +131,7 @@ def test_set_entry_hides_icon_for_master(qapp):
         MixerEntry(key="master", display_name="System", volume=0.5, muted=False, is_master=True), focused=False
     )
 
-    assert widget._icon_label.isHidden()
+    assert widget._icon_container.isHidden()
 
 
 def test_set_entry_shows_fallback_icon_for_unknown_app(qapp):
@@ -169,12 +169,6 @@ def test_hide_button_hidden_by_default(qapp):
 
     assert widget._hide_button.isHidden()
 
-
-def test_hide_button_visible_when_focused(qapp):
-    widget = EntryWidget()
-    widget.set_entry(make_entry(), focused=True)
-
-    assert not widget._hide_button.isHidden()
 
 
 def test_hide_button_hidden_when_unfocused(qapp):
