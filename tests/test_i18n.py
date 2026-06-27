@@ -1,7 +1,14 @@
 import pytest
 
 import sound_mixer.i18n as i18n
-from sound_mixer.i18n import AVAILABLE_LANGUAGES, FALLBACK_LANGUAGE, language_display_name, t
+from sound_mixer.i18n import (
+    AVAILABLE_LANGUAGES,
+    FALLBACK_LANGUAGE,
+    _language_english_name,
+    _language_native_name,
+    language_display_name,
+    t,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -64,11 +71,23 @@ def test_available_languages_contains_en_and_uk():
     assert "uk" in AVAILABLE_LANGUAGES
 
 
+def test_language_native_name_uses_windows_api():
+    native_en = _language_native_name("en")
+    native_uk = _language_native_name("uk")
+    assert native_en == "English"
+    assert "країнськ" in native_uk
+
+
+def test_language_english_name_uses_windows_api():
+    assert _language_english_name("en") == "English"
+    assert _language_english_name("uk") == "Ukrainian"
+
+
 def test_language_display_name_different_languages():
     i18n.setup("en")
 
     name = language_display_name("uk")
-    assert "Українська" in name
+    assert "країнськ" in name
     assert "Ukrainian" in name
 
 
@@ -79,14 +98,15 @@ def test_language_display_name_same_as_current_shows_native_only():
     assert name == "English"
 
 
-def test_language_display_name_explicit_current():
+def test_language_display_name_en_from_uk_shows_english_only():
     name = language_display_name("en", current_lang="uk")
-    assert name == "English (Англійська)"
+    assert name == "English"
 
 
 def test_language_display_name_uk_from_en():
     name = language_display_name("uk", current_lang="en")
-    assert name == "Українська (Ukrainian)"
+    assert "країнськ" in name
+    assert "Ukrainian" in name
 
 
 def test_detect_system_language_returns_valid_code():

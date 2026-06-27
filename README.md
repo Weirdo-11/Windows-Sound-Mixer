@@ -67,21 +67,21 @@ The settings file is plain JSON, stored next to the application (or next to
 the app is not running. If the format changes in a future version, the file
 is migrated automatically on load.
 
-| Field                  | Type            | Description                                                                                                                                |
-| ---------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `version`              | integer         | Settings schema version, used for migrations.                                                                                              |
-| `master_volume`        | float (0.0-1.0) | System master volume level.                                                                                                                |
-| `master_muted`         | bool            | System master mute state.                                                                                                                  |
-| `app_volumes`          | object          | Per-application volume/mute, keyed by lowercase executable name (e.g. `"chrome.exe"`). Each value is `{ "volume": float, "muted": bool }`. |
-| `hotkeys`              | array           | Global hotkey bindings. Each entry is `{ "action": string, "combo": string, "enabled": bool }`.                                            |
-| `autostart_enabled`    | bool            | Whether the app starts automatically on Windows login.                                                                                     |
-| `overlay`              | object          | Overlay window state: `{ "x", "y", "width", "height" }` (pixels) and `"visible_on_start"` (bool).                                          |
-| `tooltip_delay_ms`     | integer         | Delay, in milliseconds, before action button tooltips appear.                                                                              |
-| `volume_step`          | object          | `{ "arrow": float, "scroll": float }` - volume change per arrow-key press and per scroll wheel notch.                                      |
-| `ui_scale`             | float (0.5-3.0) | Overlay interface scale factor (fonts, icons, sliders). 1.0 is 100%.                                                                       |
-| `default_app_volume`   | float (0.0-1.0) | Initial volume applied to apps the first time they appear, if not already in `app_volumes`.                                                |
-| `transparency_enabled` | bool            | Whether the overlay background uses the translucent acrylic effect. If disabled, the overlay has a solid background.                       |
-| `ignored_apps`         | array of string | Lowercase executable names (e.g. `"discord.exe"`) hidden from the main entry list. Ignored entries can be revealed via the expand button.  |
+| Field                  | Type            | Description                                                                                                                                                     |
+| ---------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `version`              | integer         | Settings schema version, used for migrations.                                                                                                                   |
+| `master_volume`        | float (0.0-1.0) | System master volume level.                                                                                                                                     |
+| `master_muted`         | bool            | System master mute state.                                                                                                                                       |
+| `app_volumes`          | object          | Per-application volume/mute, keyed by lowercase executable name (e.g. `"chrome.exe"`). Each value is `{ "volume": float, "muted": bool }`.                      |
+| `hotkeys`              | array           | Global hotkey bindings. Each entry is `{ "action": string, "combo": string, "enabled": bool }`.                                                                 |
+| `autostart_enabled`    | bool            | Whether the app starts automatically on Windows login.                                                                                                          |
+| `overlay`              | object          | Overlay window state: `{ "x", "y", "width", "height" }` (pixels) and `"visible_on_start"` (bool).                                                               |
+| `tooltip_delay_ms`     | integer         | Delay, in milliseconds, before action button tooltips appear.                                                                                                   |
+| `volume_step`          | object          | `{ "arrow": float, "scroll": float }` - volume change per arrow-key press and per scroll wheel notch.                                                           |
+| `ui_scale`             | float (0.5-3.0) | Overlay interface scale factor (fonts, icons, sliders). 1.0 is 100%.                                                                                            |
+| `default_app_volume`   | float (0.0-1.0) | Initial volume applied to apps the first time they appear, if not already in `app_volumes`.                                                                     |
+| `transparency_enabled` | bool            | Whether the overlay background uses the translucent acrylic effect. If disabled, the overlay has a solid background.                                            |
+| `ignored_apps`         | array of string | Lowercase executable names (e.g. `"discord.exe"`) hidden from the main entry list. Ignored entries can be revealed via the expand button.                       |
 | `language`             | string          | UI language code (`"en"`, `"uk"`) or `"system"` to follow the Windows locale. Defaults to `"system"`. Changes take effect immediately when saved from Settings. |
 
 ### Hotkey actions
@@ -140,10 +140,10 @@ non-Windows platforms.
 
 ## Supported languages
 
-| Language | Code | Added by |
-| -------- | ---- | -------- |
-| English | `en` | author |
-| Українська (Ukrainian) | `uk` | author |
+| Language               | Code | Added by |
+| ---------------------- | ---- | -------- |
+| English                | `en` | author   |
+| Українська (Ukrainian) | `uk` | author   |
 
 <details>
 <summary>How to add a new translation</summary>
@@ -154,32 +154,22 @@ non-Windows platforms.
    the keys.
 
 2. **Register the language in the i18n module.** Open `sound_mixer/i18n/__init__.py` and make
-   three additions:
-
-   - Add the code to `AVAILABLE_LANGUAGES`:
-     ```python
-     AVAILABLE_LANGUAGES: list[str] = ["en", "uk", "de"]
-     ```
-   - Add the language's names (in itself and in every other supported language) to
-     `LANGUAGE_NAMES`:
-     ```python
-     LANGUAGE_NAMES: dict[str, dict[str, str]] = {
-         "en": {"en": "English", "uk": "Англійська", "de": "Englisch"},
-         "uk": {"en": "Ukrainian", "uk": "Українська", "de": "Ukrainisch"},
-         "de": {"en": "German", "uk": "Німецька", "de": "Deutsch"},
-     }
-     ```
-   - Add a branch in `_load_language_strings()` to import the new module:
-     ```python
-     def _load_language_strings(language: str) -> dict[str, str]:
-         if language == "uk":
-             from sound_mixer.i18n.uk import STRINGS
-             return STRINGS
-         if language == "de":
-             from sound_mixer.i18n.de import STRINGS
-             return STRINGS
-         return {}
-     ```
+   two additions:
+    - Add the code to `AVAILABLE_LANGUAGES`:
+        ```python
+        AVAILABLE_LANGUAGES: list[str] = ["en", "uk", "de"]
+        ```
+    - Add a branch in `_load_language_strings()` to import the new module:
+        ```python
+        def _load_language_strings(language: str) -> dict[str, str]:
+            if language == "uk":
+                from sound_mixer.i18n.uk import STRINGS
+                return STRINGS
+            if language == "de":
+                from sound_mixer.i18n.de import STRINGS
+                return STRINGS
+            return {}
+        ```
 
 3. **Add tests.** In `tests/test_i18n.py`, add a test that calls `i18n.setup("de")` and
    asserts at least one translated string is returned correctly.
@@ -193,14 +183,14 @@ non-Windows platforms.
 <details>
 <summary>Third-party packages</summary>
 
-| Package | License | Notes |
-| --- | --- | --- |
-| [pycaw](https://github.com/AndreMiras/pycaw) | MIT | |
-| [comtypes](https://github.com/enthought/comtypes) | MIT | |
-| [PySide6](https://pypi.org/project/PySide6/) | LGPL-3.0 | |
-| [psutil](https://github.com/giampaolo/psutil) | BSD-3-Clause | |
-| [PyInstaller](https://pyinstaller.org/) | GPL-2.0 with Bootloader Exception | build tool only |
-| [pytest](https://pytest.org/) | MIT | test only |
-| [pytest-xdist](https://pypi.org/project/pytest-xdist/) | MIT | test only |
+| Package                                                | License                           | Notes           |
+| ------------------------------------------------------ | --------------------------------- | --------------- |
+| [pycaw](https://github.com/AndreMiras/pycaw)           | MIT                               |                 |
+| [comtypes](https://github.com/enthought/comtypes)      | MIT                               |                 |
+| [PySide6](https://pypi.org/project/PySide6/)           | LGPL-3.0                          |                 |
+| [psutil](https://github.com/giampaolo/psutil)          | BSD-3-Clause                      |                 |
+| [PyInstaller](https://pyinstaller.org/)                | GPL-2.0 with Bootloader Exception | build tool only |
+| [pytest](https://pytest.org/)                          | MIT                               | test only       |
+| [pytest-xdist](https://pypi.org/project/pytest-xdist/) | MIT                               | test only       |
 
 </details>

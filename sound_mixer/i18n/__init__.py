@@ -7,13 +7,36 @@ FALLBACK_LANGUAGE = "en"
 
 AVAILABLE_LANGUAGES: list[str] = ["en", "uk"]
 
-LANGUAGE_NAMES: dict[str, dict[str, str]] = {
-    "en": {"en": "English", "uk": "Англійська"},
-    "uk": {"en": "Ukrainian", "uk": "Українська"},
-}
-
 _strings: dict[str, str] = dict(_EN_STRINGS)
 _current_language: str = FALLBACK_LANGUAGE
+
+_LOCALE_SNATIVELANGUAGENAME = 0x00000004
+_LOCALE_SENGLISHLANGUAGENAME = 0x00001001
+
+
+def _get_locale_info(locale_name: str, lctype: int) -> str:
+    if sys.platform != "win32":
+        return ""
+    try:
+        buf = ctypes.create_unicode_buffer(256)
+        result = ctypes.windll.kernel32.GetLocaleInfoEx(locale_name, lctype, buf, 256)
+        if result > 0:
+            return buf.value
+    except Exception:
+        pass
+    return ""
+
+
+def _language_native_name(lang_code: str) -> str:
+    name = _get_locale_info(lang_code, _LOCALE_SNATIVELANGUAGENAME)
+    if name:
+        return name[0].upper() + name[1:]
+    return lang_code
+
+
+def _language_english_name(lang_code: str) -> str:
+    name = _get_locale_info(lang_code, _LOCALE_SENGLISHLANGUAGENAME)
+    return name if name else lang_code
 
 
 def detect_system_language() -> str:
@@ -61,12 +84,13 @@ def get_current_language() -> str:
 def language_display_name(lang_code: str, current_lang: str | None = None) -> str:
     if current_lang is None:
         current_lang = _current_language
-    names = LANGUAGE_NAMES.get(lang_code, {})
-    native = names.get(lang_code, lang_code)
-    in_current = names.get(current_lang, native)
-    if native == in_current:
+    native = _language_native_name(lang_code)
+    if lang_code == current_lang:
         return native
-    return f"{native} ({in_current})"
+    english = _language_english_name(lang_code)
+    if native == english:
+        return native
+    return f"{native} ({english})"
 
 
 def t(key: str) -> str:
