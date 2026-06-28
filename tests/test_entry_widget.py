@@ -23,6 +23,21 @@ def wheel_event(direction: int = 1) -> QWheelEvent:
     )
 
 
+def wheel_event_horizontal(direction: int = 1) -> QWheelEvent:
+    from PySide6.QtCore import Qt
+
+    return QWheelEvent(
+        QPointF(0, 0),
+        QPointF(0, 0),
+        QPoint(0, 0),
+        QPoint(120 * direction, 0),
+        Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.AltModifier,
+        Qt.ScrollPhase.NoScrollPhase,
+        False,
+    )
+
+
 def make_entry(volume: float = 0.5, muted: bool = False) -> MixerEntry:
     return MixerEntry(key="chrome.exe", display_name="Google Chrome", volume=volume, muted=muted, is_master=False)
 
@@ -218,3 +233,51 @@ def test_apply_scale_resizes_hide_button_icon(qapp):
     expected = round(BASE_ICON_PX * 2.0)
     assert widget._hide_button.iconSize().width() == expected
     assert widget._hide_button.iconSize().height() == expected
+
+
+def test_scroll_up_with_alt_held_increases_volume(qapp):
+    widget = EntryWidget()
+    widget.set_entry(make_entry(volume=0.5), focused=False)
+
+    scrolled = []
+    widget.scrolled.connect(scrolled.append)
+
+    widget.wheelEvent(wheel_event_horizontal(direction=1))
+
+    assert scrolled == [1]
+
+
+def test_scroll_down_with_alt_held_decreases_volume(qapp):
+    widget = EntryWidget()
+    widget.set_entry(make_entry(volume=0.5), focused=False)
+
+    scrolled = []
+    widget.scrolled.connect(scrolled.append)
+
+    widget.wheelEvent(wheel_event_horizontal(direction=-1))
+
+    assert scrolled == [-1]
+
+
+def test_zero_delta_wheel_event_does_not_scroll(qapp):
+    from PySide6.QtCore import Qt
+
+    widget = EntryWidget()
+    widget.set_entry(make_entry(volume=0.5), focused=False)
+
+    scrolled = []
+    widget.scrolled.connect(scrolled.append)
+
+    zero_event = QWheelEvent(
+        QPointF(0, 0),
+        QPointF(0, 0),
+        QPoint(0, 0),
+        QPoint(0, 0),
+        Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.NoModifier,
+        Qt.ScrollPhase.NoScrollPhase,
+        False,
+    )
+    widget.wheelEvent(zero_event)
+
+    assert scrolled == []

@@ -189,8 +189,11 @@ class EntryWidget(QFrame):
         super().leaveEvent(event)
 
     def wheelEvent(self, event) -> None:
+        delta = event.angleDelta().y() or event.angleDelta().x()
+        if not delta:
+            return
         self.focus_requested.emit()
-        self.scrolled.emit(1 if event.angleDelta().y() > 0 else -1)
+        self.scrolled.emit(1 if delta > 0 else -1)
 
     def eventFilter(self, watched, event) -> bool:
         if event.type() == QEvent.Type.Wheel and watched in (self._slider, self._volume_spinbox):
