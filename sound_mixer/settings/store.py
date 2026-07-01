@@ -3,6 +3,7 @@ import json
 import logging
 import os
 from pathlib import Path
+from typing import Callable, Optional
 
 from sound_mixer.settings.migrations import migrate
 from sound_mixer.settings.schema import DEFAULT_SETTINGS, MAX_UI_SCALE, MIN_UI_SCALE
@@ -15,6 +16,22 @@ class SettingsStore:
     def __init__(self, path: Path):
         self.path = Path(path)
         self.data = copy.deepcopy(DEFAULT_SETTINGS)
+        self._save_scheduler: Optional[Callable[[], None]] = None
+        self._dirty = False
+
+    def set_save_scheduler(self, scheduler: Optional[Callable[[], None]]) -> None:
+        self._save_scheduler = scheduler
+
+    def _request_save(self) -> None:
+        if self._save_scheduler is None:
+            self.save()
+            return
+        self._dirty = True
+        self._save_scheduler()
+
+    def flush(self) -> None:
+        if self._dirty:
+            self.save()
 
     def load(self) -> dict:
         if not self.path.exists():
@@ -49,6 +66,7 @@ class SettingsStore:
         with tmp_path.open("w", encoding="utf-8") as f:
             json.dump(self.data, f, indent=2)
         os.replace(tmp_path, self.path)
+        self._dirty = False
 
     def _clamp(self) -> None:
         self.data["master_volume"] = clamp_volume(self.data["master_volume"])
@@ -64,7 +82,7 @@ class SettingsStore:
         exe = exe.lower()
         entry = self.data["app_volumes"].setdefault(exe, {"volume": 1.0, "muted": False})
         entry["volume"] = clamp_volume(level)
-        self.save()
+        self._request_save()
 
     def get_app_muted(self, exe: str) -> bool:
         exe = exe.lower()
@@ -74,21 +92,21 @@ class SettingsStore:
         exe = exe.lower()
         entry = self.data["app_volumes"].setdefault(exe, {"volume": 1.0, "muted": False})
         entry["muted"] = bool(muted)
-        self.save()
+        self._request_save()
 
     def get_master_volume(self) -> float:
         return self.data["master_volume"]
 
     def set_master_volume(self, level: float) -> None:
         self.data["master_volume"] = clamp_volume(level)
-        self.save()
+        self._request_save()
 
     def get_master_muted(self) -> bool:
         return self.data["master_muted"]
 
     def set_master_muted(self, muted: bool) -> None:
         self.data["master_muted"] = bool(muted)
-        self.save()
+        self._request_save()
 
     def get_hotkeys(self) -> list[dict]:
         return self.data["hotkeys"]

@@ -37,6 +37,89 @@ def test_save_load_round_trip(tmp_path):
     assert hotkey["combo"] == "ctrl+alt+num1"
 
 
+def read_settings_file(path):
+    with path.open(encoding="utf-8") as f:
+        return json.load(f)
+
+
+def test_setters_save_immediately_without_scheduler(tmp_path):
+    path = tmp_path / "settings.json"
+    store = SettingsStore(path)
+    store.load()
+
+    store.set_app_volume("game.exe", 0.3)
+
+    assert read_settings_file(path)["app_volumes"]["game.exe"]["volume"] == 0.3
+
+
+def test_deferred_setter_does_not_write_until_flush(tmp_path):
+    path = tmp_path / "settings.json"
+    store = SettingsStore(path)
+    store.load()
+    store.set_app_volume("game.exe", 0.3)
+
+    scheduled = []
+    store.set_save_scheduler(lambda: scheduled.append(True))
+
+    store.set_app_volume("game.exe", 0.9)
+
+    assert read_settings_file(path)["app_volumes"]["game.exe"]["volume"] == 0.3
+    assert store.get_app_volume("game.exe") == 0.9
+    assert scheduled == [True]
+
+    store.flush()
+
+    assert read_settings_file(path)["app_volumes"]["game.exe"]["volume"] == 0.9
+
+
+def test_multiple_deferred_changes_coalesce_into_one_flush(tmp_path):
+    path = tmp_path / "settings.json"
+    store = SettingsStore(path)
+    store.load()
+    store.set_save_scheduler(lambda: None)
+
+    store.set_app_volume("game.exe", 0.1)
+    store.set_app_volume("game.exe", 0.2)
+    store.set_master_volume(0.6)
+    store.set_app_muted("game.exe", True)
+
+    store.flush()
+
+    data = read_settings_file(path)
+    assert data["app_volumes"]["game.exe"]["volume"] == 0.2
+    assert data["app_volumes"]["game.exe"]["muted"] is True
+    assert data["master_volume"] == 0.6
+
+
+def test_immediate_setter_persists_pending_deferred_changes(tmp_path):
+    path = tmp_path / "settings.json"
+    store = SettingsStore(path)
+    store.load()
+    store.set_save_scheduler(lambda: None)
+
+    store.set_app_volume("game.exe", 0.4)
+    store.set_language("en")
+
+    data = read_settings_file(path)
+    assert data["app_volumes"]["game.exe"]["volume"] == 0.4
+    assert data["language"] == "en"
+
+    mtime_before = path.stat().st_mtime_ns
+    store.flush()
+    assert path.stat().st_mtime_ns == mtime_before
+
+
+def test_flush_without_changes_does_not_write(tmp_path):
+    path = tmp_path / "settings.json"
+    store = SettingsStore(path)
+    store.load()
+
+    mtime_before = path.stat().st_mtime_ns
+    store.flush()
+
+    assert path.stat().st_mtime_ns == mtime_before
+
+
 def test_corrupt_json_falls_back_to_defaults(tmp_path):
     path = tmp_path / "settings.json"
     path.write_text("{not valid json", encoding="utf-8")

@@ -1,5 +1,6 @@
 import sys
 
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 
 import sound_mixer.i18n as i18n
@@ -13,6 +14,17 @@ from sound_mixer.settings.store import SettingsStore
 from sound_mixer.settings_window.window import SettingsWindow
 from sound_mixer.tray.tray_icon import TrayIcon
 
+SETTINGS_SAVE_DELAY_MS = 500
+
+
+def install_deferred_saves(settings: SettingsStore, qt_app) -> QTimer:
+    timer = QTimer(qt_app)
+    timer.setSingleShot(True)
+    timer.timeout.connect(settings.flush)
+    settings.set_save_scheduler(lambda: timer.isActive() or timer.start(SETTINGS_SAVE_DELAY_MS))
+    qt_app.aboutToQuit.connect(settings.flush)
+    return timer
+
 
 class SoundMixerApp:
     def __init__(self) -> None:
@@ -20,6 +32,7 @@ class SoundMixerApp:
         self.qt_app.setQuitOnLastWindowClosed(False)
         self.settings = SettingsStore(default_settings_path())
         self.settings.load()
+        install_deferred_saves(self.settings, self.qt_app)
         i18n.setup(self.settings.get_language())
         self.backend = create_backend()
         self.model = MixerModel(self.backend, self.settings)
@@ -129,3 +142,4 @@ class SoundMixerApp:
             return self.qt_app.exec()
         finally:
             self.hotkeys.stop()
+            self.settings.flush()

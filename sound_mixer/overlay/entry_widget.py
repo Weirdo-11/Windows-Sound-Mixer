@@ -54,6 +54,9 @@ class EntryWidget(QFrame):
         self._current_icon = QIcon()
         self._app_icon_px = BASE_APP_ICON_PX
         self._is_master = False
+        self._last_muted: bool | None = None
+        self._last_icon_path: str | None = None
+        self._last_display_name: str | None = None
 
         self._mute_button = DelayedTooltipButton(self)
         self._mute_button.setToolTip(t("mute_unmute_tooltip"))
@@ -140,37 +143,49 @@ class EntryWidget(QFrame):
         layout.setSpacing(round(BASE_SPACING_PX * scale))
 
     def set_entry(self, entry: MixerEntry, focused: bool) -> None:
-        self._mute_button.setIcon(load_icon("muted" if entry.muted else "volume"))
+        if entry.muted != self._last_muted:
+            self._mute_button.setIcon(load_icon("muted" if entry.muted else "volume"))
+
+        master_changed = entry.is_master != self._is_master
         self._is_master = entry.is_master
 
         if entry.is_master:
             self._icon_label.hide()
         else:
-            self._icon_label.setToolTip(entry.display_name)
-            self._current_icon = load_app_icon(entry.icon_path)
-            self._update_icon_pixmap()
+            if entry.display_name != self._last_display_name:
+                self._icon_label.setToolTip(entry.display_name)
+            if entry.icon_path != self._last_icon_path or master_changed:
+                self._current_icon = load_app_icon(entry.icon_path)
+                self._update_icon_pixmap()
             self._icon_label.show()
         self._icon_container.show()
 
-        self._process_name_label.setText(entry.display_name)
-
-        self.setToolTip(entry.display_name)
-        self._slider.setToolTip(entry.display_name)
-        self._volume_spinbox.setToolTip(entry.display_name)
+        if entry.display_name != self._last_display_name:
+            self._process_name_label.setText(entry.display_name)
+            self.setToolTip(entry.display_name)
+            self._slider.setToolTip(entry.display_name)
+            self._volume_spinbox.setToolTip(entry.display_name)
 
         value = round(entry.volume * 100)
 
-        self._slider.blockSignals(True)
-        self._slider.setValue(value)
-        self._slider.blockSignals(False)
+        if self._slider.value() != value:
+            self._slider.blockSignals(True)
+            self._slider.setValue(value)
+            self._slider.blockSignals(False)
 
-        self._volume_spinbox.blockSignals(True)
-        self._volume_spinbox.setValue(value)
-        self._volume_spinbox.blockSignals(False)
+        if self._volume_spinbox.value() != value:
+            self._volume_spinbox.blockSignals(True)
+            self._volume_spinbox.setValue(value)
+            self._volume_spinbox.blockSignals(False)
 
-        self.setProperty("focused", focused)
-        self.style().unpolish(self)
-        self.style().polish(self)
+        if self.property("focused") != focused:
+            self.setProperty("focused", focused)
+            self.style().unpolish(self)
+            self.style().polish(self)
+
+        self._last_muted = entry.muted
+        self._last_icon_path = entry.icon_path
+        self._last_display_name = entry.display_name
 
         if self.underMouse() and not self._is_master:
             self._hide_button.show()

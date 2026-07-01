@@ -1,4 +1,6 @@
+import ctypes
 import sys
+from ctypes import wintypes
 
 from PySide6.QtCore import QSize, Qt, QTimer, Signal
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QScrollArea, QVBoxLayout, QWidget
@@ -319,9 +321,6 @@ class OverlayWindow(QWidget):
 
     def nativeEvent(self, event_type: bytes, message) -> tuple:
         if sys.platform == "win32" and event_type == b"windows_generic_MSG":
-            import ctypes
-            from ctypes import wintypes
-
             msg = ctypes.cast(int(message), ctypes.POINTER(wintypes.MSG)).contents
             if msg.message == WM_DWMCOLORIZATIONCOLORCHANGED:
                 self._refresh_accent_color()
@@ -444,7 +443,9 @@ class OverlayWindow(QWidget):
 
         container_height = margins.top() + margins.bottom() + entries_height + extra_height
         title_bar_height = self._title_bar.sizeHint().height()
-        self.setFixedHeight(title_bar_height + container_height + 2 * BACKGROUND_BORDER_PX)
+        target_height = title_bar_height + container_height + 2 * BACKGROUND_BORDER_PX
+        if self.height() != target_height or self.minimumHeight() != target_height:
+            self.setFixedHeight(target_height)
 
     def _on_new_session(self) -> None:
         try:

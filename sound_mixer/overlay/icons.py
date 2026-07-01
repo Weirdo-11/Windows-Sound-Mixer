@@ -6,18 +6,44 @@ from sound_mixer.paths import resource_path
 
 ICON_NAMES = ("volume", "muted", "settings", "help", "pin", "close", "toggle_on", "toggle_off", "app", "logo", "hide", "arrow_up", "dropdown_arrow")
 
+_icon_cache: dict[str, QIcon] = {}
+_app_icon_cache: dict[str, QIcon] = {}
+_icon_provider: QFileIconProvider | None = None
+
+
+def clear_caches() -> None:
+    global _icon_provider
+    _icon_cache.clear()
+    _app_icon_cache.clear()
+    _icon_provider = None
+
 
 def icon_path(name: str) -> str:
     return str(resource_path("resources", "icons", f"{name}.svg"))
 
 
 def load_icon(name: str) -> QIcon:
-    return QIcon(icon_path(name))
+    if name not in _icon_cache:
+        _icon_cache[name] = QIcon(icon_path(name))
+    return _icon_cache[name]
+
+
+def _provider() -> QFileIconProvider:
+    global _icon_provider
+    if _icon_provider is None:
+        _icon_provider = QFileIconProvider()
+    return _icon_provider
 
 
 def load_app_icon(exe_path: str) -> QIcon:
+    if exe_path not in _app_icon_cache:
+        _app_icon_cache[exe_path] = _extract_app_icon(exe_path)
+    return _app_icon_cache[exe_path]
+
+
+def _extract_app_icon(exe_path: str) -> QIcon:
     if exe_path and QFileInfo(exe_path).exists():
-        icon = QFileIconProvider().icon(QFileInfo(exe_path))
+        icon = _provider().icon(QFileInfo(exe_path))
         if not icon.isNull():
             return icon
     return load_icon("app")

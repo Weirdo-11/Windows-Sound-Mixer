@@ -1,14 +1,49 @@
+import time
+
 import psutil
 from pycaw.pycaw import AudioUtilities
 
 from sound_mixer.audio.win_names import get_exe_friendly_name, get_process_window_title
 from sound_mixer.volume import clamp_volume
 
+TITLE_RETRY_INITIAL_S = 2.0
+TITLE_RETRY_MAX_S = 30.0
+ENDPOINT_TTL_S = 5.0
+
+
+class _EndpointVolumeCache:
+    def __init__(self, acquire, now=time.monotonic, ttl=ENDPOINT_TTL_S) -> None:
+        self._acquire = acquire
+        self._now = now
+        self._ttl = ttl
+        self._endpoint = None
+        self._acquired_at = 0.0
+
+    def call(self, op):
+        endpoint = self._get_endpoint()
+        try:
+            return op(endpoint)
+        except Exception:
+            self.invalidate()
+            return op(self._get_endpoint())
+
+    def invalidate(self) -> None:
+        self._endpoint = None
+
+    def _get_endpoint(self):
+        if self._endpoint is None or self._now() - self._acquired_at >= self._ttl:
+            self._endpoint = self._acquire()
+            self._acquired_at = self._now()
+        return self._endpoint
+
 
 class _ProcessNameCache:
-    def __init__(self) -> None:
+    def __init__(self, now=time.monotonic) -> None:
+        self._now = now
         self._exe_info_checked: set[str] = set()
         self._names: dict[str, str] = {}
+        self._next_retry: dict[str, float] = {}
+        self._retry_interval: dict[str, float] = {}
 
     def resolve(self, key: str, exe_path: str, pid: int) -> None:
         if key in self._names:
@@ -19,9 +54,15 @@ class _ProcessNameCache:
             if name:
                 self._names[key] = name
                 return
+        if key in self._next_retry and self._now() < self._next_retry[key]:
+            return
         name = get_process_window_title(pid)
         if name:
             self._names[key] = name
+            return
+        interval = min(self._retry_interval.get(key, TITLE_RETRY_INITIAL_S), TITLE_RETRY_MAX_S)
+        self._next_retry[key] = self._now() + interval
+        self._retry_interval[key] = interval * 2
 
     def get(self, key: str) -> str:
         return self._names.get(key, "")
@@ -64,7 +105,7 @@ class PycawAudioBackend:
         self._sessions: list[PycawAudioSession] = []
         self._icon_paths: dict[str, str] = {}
         self._name_cache = _ProcessNameCache()
-        self.refresh()
+        self._endpoint = _EndpointVolumeCache(lambda: AudioUtilities.GetSpeakers().EndpointVolume)
 
     def refresh(self) -> None:
         try:
@@ -106,27 +147,24 @@ class PycawAudioBackend:
 
     def get_master_volume(self) -> float:
         try:
-            return self._endpoint_volume().GetMasterVolumeLevelScalar()
+            return self._endpoint.call(lambda ep: ep.GetMasterVolumeLevelScalar())
         except Exception:
             return 1.0
 
     def set_master_volume(self, level: float) -> None:
         try:
-            self._endpoint_volume().SetMasterVolumeLevelScalar(clamp_volume(level), None)
+            self._endpoint.call(lambda ep: ep.SetMasterVolumeLevelScalar(clamp_volume(level), None))
         except Exception:
             pass
 
     def get_master_mute(self) -> bool:
         try:
-            return bool(self._endpoint_volume().GetMute())
+            return bool(self._endpoint.call(lambda ep: ep.GetMute()))
         except Exception:
             return False
 
     def set_master_mute(self, muted: bool) -> None:
         try:
-            self._endpoint_volume().SetMute(bool(muted), None)
+            self._endpoint.call(lambda ep: ep.SetMute(bool(muted), None))
         except Exception:
             pass
-
-    def _endpoint_volume(self):
-        return AudioUtilities.GetSpeakers().EndpointVolume

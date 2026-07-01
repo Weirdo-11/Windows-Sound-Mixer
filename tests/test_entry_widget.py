@@ -290,6 +290,88 @@ def test_process_name_label_is_left_aligned(qapp):
     assert widget._process_name_label.alignment() & Qt.AlignmentFlag.AlignLeft
 
 
+def test_set_entry_identical_state_does_not_reload_app_icon(qapp, monkeypatch):
+    import sound_mixer.overlay.entry_widget as entry_widget_module
+
+    calls = []
+    real_load = entry_widget_module.load_app_icon
+    monkeypatch.setattr(
+        entry_widget_module, "load_app_icon", lambda path: (calls.append(path), real_load(path))[1]
+    )
+
+    widget = EntryWidget()
+    widget.set_entry(make_entry(volume=0.5), focused=False)
+    widget.set_entry(make_entry(volume=0.5), focused=False)
+
+    assert len(calls) == 1
+
+
+def test_set_entry_changed_icon_path_reloads_icon(qapp, monkeypatch):
+    import sound_mixer.overlay.entry_widget as entry_widget_module
+
+    calls = []
+    real_load = entry_widget_module.load_app_icon
+    monkeypatch.setattr(
+        entry_widget_module, "load_app_icon", lambda path: (calls.append(path), real_load(path))[1]
+    )
+
+    widget = EntryWidget()
+    entry = make_entry(volume=0.5)
+    widget.set_entry(entry, focused=False)
+    changed = MixerEntry(
+        key=entry.key, display_name=entry.display_name, volume=entry.volume, muted=entry.muted, icon_path="C:/other.exe"
+    )
+    widget.set_entry(changed, focused=False)
+
+    assert calls == ["", "C:/other.exe"]
+
+
+def test_set_entry_reflects_external_volume_change(qapp):
+    widget = EntryWidget()
+    widget.set_entry(make_entry(volume=0.42), focused=False)
+
+    widget.set_entry(make_entry(volume=0.55), focused=False)
+
+    assert widget._volume_spinbox.value() == 55
+    assert widget._slider.value() == 55
+
+
+def test_set_entry_reflects_external_mute_change(qapp):
+    widget = EntryWidget()
+    widget.set_entry(make_entry(muted=False), focused=False)
+    unmuted_key = widget._mute_button.icon().cacheKey()
+
+    widget.set_entry(make_entry(muted=True), focused=False)
+
+    assert widget._mute_button.icon().cacheKey() != unmuted_key
+
+
+def test_set_entry_focus_change_updates_property(qapp):
+    widget = EntryWidget()
+
+    widget.set_entry(make_entry(), focused=True)
+    assert widget.property("focused") is True
+
+    widget.set_entry(make_entry(), focused=False)
+    assert widget.property("focused") is False
+
+
+def test_widget_reassigned_to_different_entry_updates_everything(qapp):
+    widget = EntryWidget()
+    widget.set_entry(make_entry(volume=0.3), focused=False)
+
+    other = MixerEntry(
+        key="player.exe", display_name="Media Player", volume=0.8, muted=True, icon_path="C:/player.exe"
+    )
+    widget.set_entry(other, focused=True)
+
+    assert widget._process_name_label.text() == "Media Player"
+    assert widget.toolTip() == "Media Player"
+    assert widget._volume_spinbox.value() == 80
+    assert widget._slider.value() == 80
+    assert widget.property("focused") is True
+
+
 def test_zero_delta_wheel_event_does_not_scroll(qapp):
     from PySide6.QtCore import Qt
 
